@@ -1,0 +1,174 @@
+# Biopharmaceutical Contamination Detection Pipeline Configuration
+# ================================================================
+# This configuration file controls all aspects of the pipeline execution.
+# Modify these settings to customize data generation, model training, and validation.
+#
+# LITERATURE-BASED HYBRID VALIDATION APPROACH
+# ===========================================
+# This pipeline uses a computational proof-of-concept validated against published
+# literature values. All spectral parameters are derived from peer-reviewed studies:
+# - Wacogne et al., "UV-Vis Spectroscopy for Bioprocess Contamination Detection", Sensors 2023
+# - Wacogne et al., "Rapid Microbial Detection in Biopharmaceuticals", Biosensors 2025
+# - European Pharmacopoeia 10.0, Chapter 2.6.1: Sterility
+# - USP <71> Sterility Tests
+#
+# Key Features:
+# - Literature-derived UV-Vis absorbance values at key wavelengths
+# - Virtual spike-in experiments with realistic growth modeling
+# - 1/λ scattering behavior (Rayleigh-Mie regime)
+# - Time-course simulation (0, 30min, 1h, 2h, 4h, 8h)
+# - Comparison to literature detection limits (Wacogne et al.: 10⁴ CFU/mL)
+
+# Random seed for reproducibility
+seed: 42
+
+# =============================================================================
+# DATA GENERATION CONFIGURATION
+# =============================================================================
+data:
+  # UV-Vis spectral range (200-800 nm standard)
+  wavelength_start: 200
+  wavelength_end: 800
+  wavelength_step: 1
+
+  # Dataset size
+  n_clean: 1000                    # Number of clean/nominal spectra
+  n_contaminated_per_type: 200     # Number of contaminated spectra per contaminant type
+
+  # Inoculum levels to simulate (CFU/mL)
+  # Standard spike-in levels for literature-based validation
+  inoculum_levels:
+    - 10
+    - 25
+    - 50
+    - 100
+    - 250
+    - 500
+    - 1000
+
+  # Process variation
+  include_process_variation: true   # Add temperature, pH, DO variation
+  add_batch_effects: true          # Simulate batch-to-batch variation
+  add_instrument_variation: true   # Simulate instrument-to-instrument differences
+
+  # Number of batches and instruments to simulate
+  n_batches: 5
+  n_instruments: 3
+
+# =============================================================================
+# LITERATURE-BASED VALIDATION CONFIGURATION
+# =============================================================================
+literature_validation:
+  # Enable literature-based hybrid validation approach
+  enabled: true
+  
+  # Virtual spike-in experiment parameters
+  spike_in:
+    # Standard spike-in concentrations (CFU/mL)
+    levels: [10, 50, 100, 500, 1000]
+    
+    # Time points for time-course simulation (hours)
+    time_points_hours: [0, 0.5, 1, 2, 4, 8]
+    
+    # Number of replicates per condition
+    n_replicates: 10
+    
+    # Include clean/sterile controls
+    include_clean_controls: true
+  
+  # Literature comparison parameters
+  comparison:
+    # Reference: Wacogne et al., Sensors 2023 detection limit
+    literature_detection_limit: 10000  # 10^4 CFU/mL
+    
+    # Target: Our method aims for 10 CFU/mL (1000x improvement)
+    target_detection_limit: 10
+    
+    # Expected improvement factor
+    expected_improvement_factor: 1000
+  
+  # Organisms for validation (compendial organisms)
+  organisms:
+    - E_coli           # Gram-negative bacterium
+    - S_aureus         # Gram-positive bacterium
+    - B_subtilis       # Gram-positive bacterium
+    - P_aeruginosa     # Gram-negative bacterium
+    - C_albicans       # Yeast
+    - A_brasiliensis   # Mold (formerly A. niger)
+  
+  # Growth modeling parameters
+  growth_model:
+    # Default growth conditions
+    temperature: 37.0  # °C
+    ph: 7.2
+    media_type: "DMEM"
+    
+    # Time to detection target
+    target_detection_time_minutes: 30
+    
+    # Compendial method comparison (14 days for sterility testing)
+    compendial_method_days: 14
+
+# =============================================================================
+# FEATURE EXTRACTION CONFIGURATION
+# =============================================================================
+features:
+  include_derivatives: true        # Include spectral derivative features
+  include_statistical: true        # Include statistical features (mean, std, etc.)
+
+# =============================================================================
+# ANOMALY DETECTION MODEL CONFIGURATION
+# =============================================================================
+models:
+  # Expected contamination rate in training data
+  contamination: 0.01
+  
+  # Which models to train
+  train_iforest: true              # Isolation Forest
+  train_ocsvm: true                # One-Class SVM
+  train_autoencoder: true          # Deep Autoencoder
+  train_ensemble: false            # Ensemble of all models (slower)
+  
+  # Autoencoder-specific settings
+  ae_epochs: 100
+  ae_batch_size: 64
+  ae_latent_dim: 32
+
+# =============================================================================
+# MH-DDPM SYNTHETIC DATA GENERATION CONFIGURATION
+# =============================================================================
+mh_ddpm:
+  # Diffusion process settings
+  n_timesteps: 100                 # Number of diffusion timesteps
+  epochs: 100                      # Training epochs
+  batch_size: 64                   # Training batch size
+  
+  # Model architecture
+  hidden_dim: 256                  # Hidden layer dimension
+  
+  # Generation settings
+  n_synthetic_per_class: 50        # Synthetic samples per contaminant/inoculum combination
+
+# =============================================================================
+# VALIDATION CONFIGURATION
+# =============================================================================
+validation:
+  # Performance targets
+  target_detection_limit: 10       # Target: detect at 10 CFU/mL
+  target_sensitivity: 0.90         # Target sensitivity (90%)
+  target_specificity: 0.95         # Target specificity (95%)
+  
+  # Statistical testing
+  n_bootstrap_iterations: 100      # Bootstrap iterations for confidence intervals
+
+# =============================================================================
+# OUTPUT CONFIGURATION
+# =============================================================================
+output:
+  # Output directory (can also be set via --output CLI argument)
+  directory: output
+  
+  # Save options
+  save_models: true
+  save_intermediate_data: true
+  generate_figures: true
