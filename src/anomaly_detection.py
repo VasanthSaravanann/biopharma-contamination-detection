@@ -128,8 +128,10 @@ class IsolationForestDetector(AnomalyDetectionBase):
         """Fit Isolation Forest on nominal data"""
         X_scaled = self.preprocess(X, fit=True)
         self.model.fit(X_scaled)
-        self.set_threshold(X_scaled)
+        
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
         return self
     
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -178,6 +180,8 @@ class IsolationForestDetector(AnomalyDetectionBase):
         self.threshold = model_data['threshold']
         self.config = model_data['config']
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
 
 
 class OneClassSVMDetector(AnomalyDetectionBase):
@@ -209,8 +213,10 @@ class OneClassSVMDetector(AnomalyDetectionBase):
             X_subset = X_scaled
         
         self.model.fit(X_subset)
-        self.set_threshold(X_scaled)
+        
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
         return self
     
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -250,67 +256,76 @@ class OneClassSVMDetector(AnomalyDetectionBase):
         self.threshold = model_data['threshold']
         self.config = model_data['config']
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
 
 
-class DeepAutoencoder(nn.Module):
+class Conv1DAutoencoder(nn.Module):
     """
-    Deep Autoencoder for anomaly detection.
+    Convolutional 1D Autoencoder for anomaly detection.
     
-    Learns to reconstruct nominal spectra. Anomalies have higher
-    reconstruction error.
+    Learns to reconstruct nominal spectra using 1D convolutions
+    to capture spatial (wavelength) correlations.
     """
     
     def __init__(self, input_dim: int, config: ModelConfig):
         super().__init__()
         
         self.input_dim = input_dim
-        self.hidden_layers = config.ae_hidden_layers
         self.latent_dim = config.ae_latent_dim
-        self.dropout = config.ae_dropout
         
         # Build encoder
-        encoder_layers = []
-        prev_dim = input_dim
-        for hidden_dim in self.hidden_layers:
-            encoder_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU() if config.ae_activation == 'relu' else nn.Tanh(),
-                nn.Dropout(self.dropout)
-            ])
-            prev_dim = hidden_dim
+        self.encoder_conv = nn.Sequential(
+            nn.Conv1d(1, 16, kernel_size=7, stride=2, padding=3),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.Conv1d(16, 32, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Conv1d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Flatten()
+        )
         
-        encoder_layers.append(nn.Linear(prev_dim, self.latent_dim))
-        self.encoder = nn.Sequential(*encoder_layers)
+        # Dummy pass to compute dynamic flatten size
+        dummy_input = torch.zeros(1, 1, input_dim)
+        flatten_size = self.encoder_conv(dummy_input).shape[1]
         
-        # Build decoder (mirror of encoder)
-        decoder_layers = []
-        prev_dim = self.latent_dim
-        for hidden_dim in reversed(self.hidden_layers):
-            decoder_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU() if config.ae_activation == 'relu' else nn.Tanh(),
-                nn.Dropout(self.dropout)
-            ])
-            prev_dim = hidden_dim
+        self.encoder_linear = nn.Linear(flatten_size, self.latent_dim)
         
-        decoder_layers.append(nn.Linear(prev_dim, input_dim))
-        self.decoder = nn.Sequential(*decoder_layers)
+        # Build decoder
+        self.decoder_input = nn.Linear(self.latent_dim, flatten_size)
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose1d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.ConvTranspose1d(32, 16, kernel_size=5, stride=2, padding=2, output_padding=1),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.ConvTranspose1d(16, 1, kernel_size=7, stride=2, padding=3, output_padding=1),
+        )
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass"""
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+        x = x.view(-1, 1, self.input_dim)
+        z = self.encoder_linear(self.encoder_conv(x))
+        
+        h = self.decoder_input(z)
+        h = h.view(-1, 64, h.shape[1] // 64)
+        
+        x_recon = self.decoder(h)
+        
+        # Final resizing to handle rounding drift
+        if x_recon.shape[2] != self.input_dim:
+            x_recon = nn.functional.interpolate(x_recon, size=self.input_dim, mode='linear', align_corners=False)
+            
+        return x_recon.view(-1, self.input_dim)
     
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         """Encode to latent space"""
+        x = x.view(-1, 1, self.input_dim)
         return self.encoder(x)
-    
-    def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """Decode from latent space"""
-        return self.decoder(z)
 
 
 class AutoencoderDetector(AnomalyDetectionBase):
@@ -318,11 +333,11 @@ class AutoencoderDetector(AnomalyDetectionBase):
     Deep Autoencoder-based anomaly detector.
     
     Trains on nominal data only. Anomalies are detected based on
-    reconstruction error.
+    reconstruction error. Supports both MLP and Conv1D architectures.
     """
     
     def __init__(self, input_dim: int, config: ModelConfig,
-                 device: Optional[str] = None):
+                 use_conv: bool = True, device: Optional[str] = None):
         super().__init__(config)
         
         if device is None:
@@ -331,7 +346,13 @@ class AutoencoderDetector(AnomalyDetectionBase):
             self.device = torch.device(device)
         
         self.input_dim = input_dim
-        self.model = DeepAutoencoder(input_dim, config).to(self.device)
+        self.use_conv = use_conv
+        
+        if use_conv:
+            self.model = Conv1DAutoencoder(input_dim, config).to(self.device)
+        else:
+            # Fallback or keep MLP version if needed, but we prefer Conv1D now
+            self.model = DeepAutoencoder(input_dim, config).to(self.device)
         
         self.optimizer = None
         self.scheduler = None
@@ -460,8 +481,10 @@ class AutoencoderDetector(AnomalyDetectionBase):
             self.model.load_state_dict(best_model_state)
         
         # Set threshold based on training reconstruction errors
-        self.set_threshold(X_scaled)
+        
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
         
         return self
     
@@ -559,6 +582,8 @@ class AutoencoderDetector(AnomalyDetectionBase):
         
         self._init_optimizer()
         self.is_fitted = True
+        self.set_threshold(X_scaled); print("DEBUG: is_fitted is", self.is_fitted)
+        print("DEBUG: OCSVM fitted")
 
 
 class EnsembleAnomalyDetector:
@@ -570,26 +595,25 @@ class EnsembleAnomalyDetector:
     """
     
     def __init__(self, input_dim: int, config: ModelConfig,
-                 device: Optional[str] = None):
+                 use_conv: bool = True, device: Optional[str] = None):
         self.config = config
         self.device = device
+        self.use_conv = use_conv
         
         self.detectors = {
             'iforest': IsolationForestDetector(config),
             'ocsvm': OneClassSVMDetector(config),
-            'autoencoder': AutoencoderDetector(input_dim, config, device)
+            'autoencoder': AutoencoderDetector(input_dim, config, use_conv, device)
         }
         
         self.weights = {'iforest': 1.0, 'ocsvm': 1.0, 'autoencoder': 2.0}
         self.ensemble_threshold = None
     
-    def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None,
-            verbose: bool = True):
+    def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None):
         """Fit all detectors on nominal data"""
         for name, detector in self.detectors.items():
-            if verbose:
-                print(f"\nTraining {name}...")
-            detector.fit(X, y, verbose=verbose)
+            print(f"\nTraining {name}...")
+            detector.fit(X, y)
         
         # Set ensemble threshold
         self._set_ensemble_threshold(X)
@@ -612,7 +636,12 @@ class EnsembleAnomalyDetector:
             scores = detector.predict_proba(X)
             
             # Normalize scores to [0, 1] range
-            scores_norm = (scores - scores.min()) / (scores.max() - scores.min() + 1e-10)
+            scores_min = scores.min()
+            scores_max = scores.max()
+            if scores_max > scores_min:
+                scores_norm = (scores - scores_min) / (scores_max - scores_min)
+            else:
+                scores_norm = np.zeros_like(scores)
             
             all_scores.append(scores_norm * self.weights[name])
             total_weight += self.weights[name]
@@ -642,7 +671,8 @@ class EnsembleAnomalyDetector:
         metadata = {
             'weights': self.weights,
             'threshold': self.ensemble_threshold,
-            'config': self.config
+            'config': self.config,
+            'use_conv': self.use_conv
         }
         joblib.dump(metadata, base_path / "ensemble_metadata.pkl")
     
@@ -654,6 +684,7 @@ class EnsembleAnomalyDetector:
         self.weights = metadata['weights']
         self.ensemble_threshold = metadata['threshold']
         self.config = metadata['config']
+        self.use_conv = metadata.get('use_conv', True)
         
         for name, detector in self.detectors.items():
             if name == 'autoencoder':

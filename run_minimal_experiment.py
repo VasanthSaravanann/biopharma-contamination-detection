@@ -286,12 +286,18 @@ try:
     
     # Detection limit analysis
     print("\nDetection Limit Analysis:")
+    
+    # Calculate threshold from NOMINAL test samples only (labels == 0)
+    nominal_test_scores = if_scores[contamination_labels == 0]
+    threshold = np.percentile(nominal_test_scores, 95)
+    print(f"  → Threshold (95th percentile of clean): {threshold:.4f}")
+    
     detection_limits = {}
     for cfu in cfu_levels:
         mask = np.array([d['cfu_ml'] == cfu for d in contamination_data])
         if np.sum(mask) > 0:
             cfu_scores = if_scores[mask]
-            detection_rate = np.mean(cfu_scores > np.percentile(if_scores[:1000], 95))
+            detection_rate = np.mean(cfu_scores > threshold)
             detection_limits[cfu] = detection_rate
             print(f"  → {cfu} CFU/mL: {detection_rate:.2%} detection rate")
     

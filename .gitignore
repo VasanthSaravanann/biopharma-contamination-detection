@@ -15,6 +15,7 @@ models/*.ckpt
 
 # Output directories
 output/
+results/
 experiment_output/
 demo_output/
 explanation_output/
@@ -59,3 +60,7 @@ tmp/
 # Local config overrides
 .env
 *.local.yaml
+
+# Local large dataset / local docs
+FCIC_AMBR_05/
+*.pdf
