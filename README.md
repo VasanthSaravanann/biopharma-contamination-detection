@@ -1,21 +1,40 @@
 # Biopharmaceutical Contamination Detection System
 
-A complete machine learning pipeline for detecting microbial contamination in biopharmaceutical processes using UV-Vis spectroscopy and generative AI.
+A hybrid machine learning pipeline for detecting microbial contamination in biopharmaceutical processes using real UV-Vis measurements, process data, and synthetic augmentation.
 
 ## 📋 Overview
 
-This system implements a novel approach to contamination detection combining:
+This system implements a contamination-detection workflow combining:
 
-- **UV-Vis Spectroscopy Simulation**: Realistic spectral data generation for clean and contaminated biopharmaceutical samples
+- **Real + Synthetic Data**: Real UV-Vis/AMBR datasets plus simulation/augmentation pipelines
 - **Anomaly Detection**: Unsupervised models (Isolation Forest, Deep Autoencoder, One-Class SVM) trained only on nominal data
 - **MH-DDPM**: Multimodal Hierarchical Denoising Diffusion Probabilistic Model for synthetic data generation
 - **Comprehensive Validation**: MMD, JSD, sensitivity/specificity analysis, and detection limit verification
+
+## ⚠️ Current Repository State (Read First)
+
+This repository has been expanded beyond synthetic-only examples and now contains substantial real data artifacts.
+
+| Topic | Current status |
+|------|----------------|
+| **Latest commit executed** | `cd5142d` — *Finalize audit-grade fused pipeline hardening* |
+| **Last commit scope** | Hardened fused pipeline path (`run_pipeline.py`, `run_smoke.py`, `src/data_processing.py`, `src/fusion.py`, `src/feature_fusion.py`, `src/anomaly_detection.py`) and added `docs/audit_report.md` |
+| **Real UV-Vis spectra** | Present under `Bacteria Contamination Work/` (`Sterile samples/`, `Contaminated samples/`, `Timepoint Experiment/`) |
+| **Real AMBR process files** | Present under `FCIC_AMBR_05/` |
+| **Processed real dataset** | Present at `data/processed/real_dataset.parquet` with metadata in `data/processed/dataset_metadata.csv` |
+| **Synthetic pipeline** | Still present (`src/data_simulation.py`, `src/literature_based_simulation.py`, `src/mh_ddpm.py`) for simulation/augmentation |
+| **Latest execution artifacts** | Present in `output/results/` (`run_bundle.json`, `split_manifest.json`) and `experiment_output/` |
+
+### Practical interpretation
+
+- This project should be understood as a **hybrid codebase**: real experimental data is available, and synthetic generation modules remain available for augmentation and proof-of-concept experiments.
+- Any README statements that imply "data is only synthetic" are outdated.
 
 ---
 
 ## 🔬 Literature-Based Hybrid Validation Approach
 
-### Computational Proof-of-Concept
+### Computational Proof-of-Concept (with real-data assets available)
 
 This project now includes a **literature-based hybrid validation** methodology that demonstrates feasibility without requiring initial wet-lab experiments. All spectral parameters are derived from peer-reviewed publications:
 
@@ -29,7 +48,7 @@ This project now includes a **literature-based hybrid validation** methodology t
 
 | Aspect | Traditional Approach | Literature-Based Approach |
 |--------|---------------------|---------------------------|
-| **Data Source** | Physical experiments | Published literature values |
+| **Data Source** | Physical experiments | Published literature values (plus real datasets available in this repo) |
 | **Timeline** | 6-12 months | Days to weeks |
 | **Cost** | $50,000+ (reagents, equipment) | Computational only |
 | **Validation** | Experimental verification | Comparison to published limits |
@@ -192,9 +211,9 @@ biopharma-contamination-detection/
 │   ├── API.md                         # API documentation
 │   └── publication_methods.md         # Methods section for paper (NEW)
 ├── data/
-│   ├── raw/                           # Raw spectra data
-│   ├── processed/                     # Processed features
-│   └── synthetic/                     # Synthetic data
+│   ├── raw/                           # Raw imported data (optional staging)
+│   ├── processed/                     # Processed datasets (includes real_dataset.parquet)
+│   └── synthetic/                     # Generated synthetic outputs
 ├── models/                            # Trained model checkpoints
 ├── figures/                           # Generated visualizations
 ├── run_pipeline.py                    # Main pipeline script
