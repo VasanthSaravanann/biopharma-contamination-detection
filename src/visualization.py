@@ -466,6 +466,101 @@ class SyntheticDataVisualizer:
     """Visualize synthetic data validation"""
     
     @staticmethod
+    def plot_feature_overlap(real_data: np.ndarray, 
+                             physics_data: np.ndarray,
+                             ddpm_data: np.ndarray,
+                             method: str = 'tsne',
+                             save_path: Optional[str] = None) -> plt.Figure:
+        """
+        Visualize feature space overlap between real, physics-based, and DDPM data.
+        
+        Args:
+            real_data: Real spectra
+            physics_data: Physics-based synthetic spectra
+            ddpm_data: DDPM generated spectra
+            method: 'tsne' or 'pca'
+            save_path: Path to save figure
+        """
+        from sklearn.manifold import TSNE
+        from sklearn.decomposition import PCA
+        
+        # Combine data
+        combined = np.vstack([real_data, physics_data, ddpm_data])
+        labels = (['Real'] * len(real_data) + 
+                  ['Physics-based'] * len(physics_data) + 
+                  ['MH-DDPM'] * len(ddpm_data))
+        
+        # Dim reduction
+        if method == 'tsne':
+            reducer = TSNE(n_components=2, random_state=42)
+        else:
+            reducer = PCA(n_components=2)
+            
+        proj = reducer.fit_transform(combined)
+        
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        colors = {'Real': '#2E86AB', 'Physics-based': '#A23B72', 'MH-DDPM': '#F18F01'}
+        
+        for label in ['Physics-based', 'MH-DDPM', 'Real']:
+            mask = [l == label for l in labels]
+            ax.scatter(proj[mask, 0], proj[mask, 1], label=label, 
+                       color=colors[label], alpha=0.6, s=40, edgecolors='white', linewidth=0.5)
+            
+        ax.set_title(f'Feature Space Overlap ({method.upper()})')
+        ax.legend()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        return fig
+
+    @staticmethod
+    def plot_wavelength_mean_difference(real_data: np.ndarray,
+                                       synthetic_data: np.ndarray,
+                                       wavelengths: np.ndarray,
+                                       title: str = "Mean Absolute Difference by Wavelength",
+                                       save_path: Optional[str] = None) -> plt.Figure:
+        """
+        Plot wavelength-wise mean-difference between real and synthetic data.
+        
+        Args:
+            real_data: Real spectra
+            synthetic_data: Synthetic spectra
+            wavelengths: Wavelength array
+            save_path: Path to save figure
+        """
+        mean_real = np.mean(real_data, axis=0)
+        mean_synth = np.mean(synthetic_data, axis=0)
+        
+        diff = mean_real - mean_synth
+        abs_diff = np.abs(diff)
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
+        
+        # Top: Mean spectra
+        ax1.plot(wavelengths, mean_real, label='Real (Mean)', color='#2E86AB', linewidth=2)
+        ax1.plot(wavelengths, mean_synth, label='Synthetic (Mean)', color='#F18F01', linestyle='--', linewidth=2)
+        ax1.set_ylabel('Absorbance (AU)')
+        ax1.set_title('Mean Spectra Comparison')
+        ax1.legend()
+        
+        # Bottom: Difference
+        ax2.fill_between(wavelengths, 0, diff, where=(diff >= 0), color='green', alpha=0.3, label='Real > Synth')
+        ax2.fill_between(wavelengths, 0, diff, where=(diff < 0), color='red', alpha=0.3, label='Synth > Real')
+        ax2.plot(wavelengths, diff, color='black', linewidth=1, alpha=0.7)
+        ax2.axhline(0, color='gray', linestyle='-', linewidth=0.5)
+        
+        ax2.set_xlabel('Wavelength (nm)')
+        ax2.set_ylabel('Difference (Real - Synth)')
+        ax2.set_title(title)
+        ax2.legend()
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        return fig
+
+    @staticmethod
     def plot_distribution_comparison(real_data: np.ndarray,
                                       synthetic_data: np.ndarray,
                                       feature_names: Optional[List[str]] = None,

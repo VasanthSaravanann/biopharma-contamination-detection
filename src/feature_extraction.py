@@ -88,7 +88,7 @@ class SpectralFeatureExtractor:
     
     def _get_spectrum(self, row: pd.Series) -> np.ndarray:
         """Extract spectrum array from a DataFrame row"""
-        return row[self.abs_cols].values
+        return row[self.abs_cols].values.astype(float)
     
     def extract_all_features(self, df: pd.DataFrame,
                              include_derivatives: bool = True,
@@ -223,7 +223,13 @@ class SpectralFeatureExtractor:
                 left = properties['left_bases'][i]
                 right = properties['right_bases'][i]
                 if left is not None and right is not None:
-                    peak_area = np.trapz(smoothed[int(left):int(right)],
+                    # Use np.trapezoid for NumPy 2.0 compatibility
+                    if hasattr(np, 'trapezoid'):
+                        trapz_func = np.trapezoid
+                    else:
+                        trapz_func = np.trapz
+                    
+                    peak_area = trapz_func(smoothed[int(left):int(right)],
                                         self.wavelengths[int(left):int(right)])
                     total_area += peak_area
             
@@ -356,8 +362,14 @@ class SpectralFeatureExtractor:
             start_idx = self._find_closest_index(wl_start)
             end_idx = self._find_closest_index(wl_end)
             
-            integral = np.trapz(spectrum[start_idx:end_idx],
-                               self.wavelengths[start_idx:end_idx])
+            # Use np.trapezoid for NumPy 2.0 compatibility
+            if hasattr(np, 'trapezoid'):
+                trapz_func = np.trapezoid
+            else:
+                trapz_func = np.trapz
+                
+            integral = trapz_func(spectrum[start_idx:end_idx],
+                                self.wavelengths[start_idx:end_idx])
             integrals[f'integral_{name}'] = integral
         
         return integrals

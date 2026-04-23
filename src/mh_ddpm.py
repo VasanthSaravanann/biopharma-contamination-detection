@@ -19,6 +19,7 @@ from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from pathlib import Path
 import math
+import copy
 from tqdm import tqdm
 import warnings
 
@@ -153,11 +154,15 @@ class ResidualBlock(nn.Module):
         residual = x
         
         # Add time embedding
-        t_emb = self.time_mlp(t_emb).unsqueeze(1)
+        t_emb = self.time_mlp(t_emb)
+        if len(x.shape) == 3 and len(t_emb.shape) == 2:
+            t_emb = t_emb.unsqueeze(1)
         x = x + t_emb
         
         # Add condition embedding
-        c_emb = self.cond_mlp(c_emb).unsqueeze(1)
+        c_emb = self.cond_mlp(c_emb)
+        if len(x.shape) == 3 and len(c_emb.shape) == 2:
+            c_emb = c_emb.unsqueeze(1)
         x = x + c_emb
         
         # MLP block with residual
@@ -394,22 +399,18 @@ class MHDDPM(nn.Module):
         
         # Calculate posterior mean
         alpha_t = 1.0 - beta_t
-        sqrt_alpha_t = torch.sqrt(alpha_t)
-        posterior_mean = (
-            torch.sqrt(alpha_t) * (1 - alphas_cumprod[t].view(-1, 1)) / 
-            (1 - alphas_cumprod[t + 1].view(-1, 1)) * x_t +
-            torch.sqrt(alphas_cumprod[t + 1].view(-1, 1)) * beta_t / 
-            (1 - alphas_cumprod[t + 1].view(-1, 1)) * x_0_pred
+        
+        # Simple DDPM mean calculation
+        mean = (1 / torch.sqrt(alpha_t)) * (
+            x_t - (beta_t / sqrt_one_minus_alpha_cumprod_t) * noise_pred
         )
         
         # Add noise (except for final step)
-        if t > 0:
-            posterior_variance = beta_t * (1 - alphas_cumprod[t].view(-1, 1)) / \
-                                (1 - alphas_cumprod[t + 1].view(-1, 1))
+        if t[0] > 0:
             noise = torch.randn_like(x_t)
-            return posterior_mean + torch.sqrt(posterior_variance) * noise
+            return mean + torch.sqrt(beta_t) * noise
         else:
-            return posterior_mean
+            return mean
     
     @torch.no_grad()
     def sample(self, n_samples: int, contaminant_type: torch.Tensor,
@@ -627,6 +628,48 @@ class MHDDPM(nn.Module):
             model.ema.load_state_dict(checkpoint['ema_state_dict'])
         
         return model
+
+
+class FeatureDiffusionModel(MHDDPM):
+    """
+    Lightweight feature-space diffusion baseline for tabular features.
+    
+    Operates on extracted feature vectors (~50 dimensions) instead of 
+    raw high-dimensional spectra. Uses the same MH-DDPM architecture
+    but optimized for lower-dimensional tabular data.
+    """
+    
+    def __init__(self, config: DDPMConfig):
+        """
+        Initialize feature-space diffusion model.
+        
+        Args:
+            config: DDPM configuration (ensure input_dim matches feature count)
+        """
+        super().__init__(config)
+        print(f"Initialized FeatureDiffusionModel with input_dim={config.input_dim}")
+    
+    def fit_features(self, features: np.ndarray, contaminant_types: np.ndarray,
+                    inoculum_levels: np.ndarray, **kwargs):
+        """
+        Train on extracted features.
+        
+        Wrapper around fit() for semantic clarity.
+        """
+        return self.fit(features, contaminant_types, inoculum_levels, **kwargs)
+    
+    def sample_features(self, n_samples: int, contaminant_type: int,
+                       inoculum_level: int, **kwargs) -> np.ndarray:
+        """
+        Generate synthetic feature vectors.
+        """
+        contaminant_tensor = torch.full((n_samples,), contaminant_type, 
+                                        dtype=torch.long).to(self.device)
+        inoculum_tensor = torch.full((n_samples,), inoculum_level,
+                                     dtype=torch.long).to(self.device)
+        
+        features = self.sample(n_samples, contaminant_tensor, inoculum_tensor, **kwargs)
+        return features.cpu().numpy()
 
 
 class SyntheticDataGenerator:

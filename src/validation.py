@@ -293,16 +293,12 @@ class DetectionMetrics:
                                  scores: np.ndarray) -> Dict:
         """
         Calculate basic detection metrics.
-        
-        Args:
-            y_true: True labels (0 = clean, 1 = contaminated)
-            y_pred: Predicted labels
-            scores: Anomaly scores
-            
-        Returns:
-            Dictionary of metrics
         """
-        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+        # Align labels: y_true is 0/1, y_pred is 1/-1
+        # Map y_pred: 1 -> 0 (clean), -1 -> 1 (anomaly)
+        y_pred_mapped = np.where(y_pred == -1, 1, 0)
+        
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred_mapped, labels=[0, 1]).ravel()
         
         sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
@@ -355,7 +351,7 @@ class DetectionMetrics:
                                    inoculum_levels: np.ndarray,
                                    y_true: np.ndarray) -> Dict:
         """
-        Calculate detection limit (minimum detectable CFU/mL).
+        Calculate detection limit (minimum detectable CFU/mL) with robust evaluation.
         
         Args:
             scores: Anomaly scores
@@ -366,39 +362,46 @@ class DetectionMetrics:
             Detection limit analysis
         """
         # Group by inoculum level
-        levels = np.unique(inoculum_levels[y_true == 1])
+        contaminated_mask = y_true == 1
+        levels = sorted(np.unique(inoculum_levels[contaminated_mask]))
+        
+        # Calculate threshold from clean data (95th percentile)
+        clean_scores = scores[y_true == 0]
+        threshold = np.percentile(clean_scores, 95)
         
         detection_results = []
         for level in levels:
-            mask = (inoculum_levels == level) & (y_true == 1)
-            level_scores = scores[mask]
+            level_mask = (inoculum_levels == level) & contaminated_mask
+            level_scores = scores[level_mask]
             
-            # Calculate detection rate at this level
-            # Using threshold from clean data (95th percentile)
-            clean_scores = scores[y_true == 0]
-            threshold = np.percentile(clean_scores, 95)
-            
+            if len(level_scores) == 0:
+                continue
+                
             detection_rate = np.mean(level_scores > threshold)
             
             detection_results.append({
-                'inoculum_level': level,
-                'detection_rate': detection_rate,
-                'n_samples': len(level_scores),
+                'inoculum_level': float(level),
+                'detection_rate': float(detection_rate),
+                'n_samples': int(len(level_scores)),
             })
         
         # Find detection limit (level with >= 90% detection rate)
         detection_limit = None
-        for result in sorted(detection_results, key=lambda x: x['inoculum_level']):
+        for result in detection_results:
             if result['detection_rate'] >= 0.90:
                 detection_limit = result['inoculum_level']
                 break
         
+        # If still not found, set to infinity
+        if detection_limit is None:
+            detection_limit = float('inf')
+        
         return {
             'by_level': detection_results,
             'detection_limit_90': detection_limit,
+            'threshold_used': float(threshold),
             'target_detection_limit': self.config.target_detection_limit,
-            'meets_target': detection_limit is not None and 
-                           detection_limit <= self.config.target_detection_limit
+            'meets_target': detection_limit <= self.config.target_detection_limit
         }
     
     def bootstrap_confidence_intervals(self, y_true: np.ndarray,
@@ -689,6 +692,38 @@ class ValidationPipeline:
             scores, inoculum_levels, y_test
         )
         
+        # Explicit 10 CFU/mL analysis
+        target_lod = 10.0
+        mask_10 = (inoculum_levels == target_lod) & (y_test == 1)
+        mask_clean = (y_test == 0)
+        
+        confusion_10 = {}
+        if np.any(mask_10):
+            scores_10 = scores[mask_10]
+            scores_clean = scores[mask_clean]
+            
+            # Use threshold from detection limit calculation (95th percentile of clean)
+            threshold = detection_limit.get('threshold_used', np.percentile(scores_clean, 95))
+                
+            tp_10 = np.sum(scores_10 > threshold)
+            fn_10 = np.sum(scores_10 <= threshold)
+            fp_clean = np.sum(scores_clean > threshold)
+            tn_clean = np.sum(scores_clean <= threshold)
+            
+            total_10 = len(scores_10)
+            total_clean = len(scores_clean)
+            
+            confusion_10 = {
+                'tp': int(tp_10),
+                'fn': int(fn_10),
+                'fp': int(fp_clean),
+                'tn': int(tn_clean),
+                'sensitivity': float(tp_10 / total_10),
+                'specificity': float(tn_clean / total_clean),
+                'fpr': float(fp_clean / total_clean),
+                'fnr': float(fn_10 / total_10)
+            }
+        
         # Bootstrap confidence intervals
         ci = self.metrics_calculator.bootstrap_confidence_intervals(
             y_test, scores, self.config.n_bootstrap_iterations
@@ -706,6 +741,7 @@ class ValidationPipeline:
             'basic_metrics': basic_metrics,
             'roc_metrics': roc_metrics,
             'detection_limit': detection_limit,
+            'confusion_10cfu': confusion_10,
             'confidence_intervals': ci,
             'meets_targets': meets_targets,
             'all_targets_met': all(meets_targets.values()),

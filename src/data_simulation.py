@@ -273,7 +273,66 @@ class UVVisSpectraGenerator:
         absorbance = np.maximum(0, absorbance)
         
         return wavelengths, absorbance
+
+    def _generate_benign_drift_spectrum(self, process_conditions: ProcessConditions,
+                                        drift_magnitude: float = 1.0) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Generate a spectrum with benign process drift (e.g., metabolic pH drop).
+        Crucially, this contains NO bacterial scattering or microbial peaks.
+        """
+        # Simulate significant pH drop due to cell metabolism (benign)
+        drift_conditions = ProcessConditions(
+            temperature=process_conditions.temperature,
+            ph=max(6.0, process_conditions.ph - (0.5 * drift_magnitude)), 
+            dissolved_oxygen=max(0, process_conditions.dissolved_oxygen * (1.0 - 0.2 * drift_magnitude)),
+            batch_age=process_conditions.batch_age + (12 * drift_magnitude),
+            media_type=process_conditions.media_type
+        )
+        
+        # Generate as clean but with drifted conditions
+        return self._generate_clean_spectrum(drift_conditions)
     
+    def evaluate_benign_drift(self, detector, extractor=None, n_samples: int = 100) -> Dict:
+        """
+        Evaluation helper: asserts that benign drift is predicted as normal.
+        """
+        records = []
+        wavelengths = self.spectral_params.wavelengths
+        
+        for i in range(n_samples):
+            proc_cond = ProcessConditions().add_variation()
+            _, absorbance = self._generate_benign_drift_spectrum(proc_cond)
+            records.append(absorbance)
+            
+        X_drift_raw = np.vstack(records)
+        
+        if extractor is not None:
+            df_drift = pd.DataFrame(X_drift_raw, columns=[f'abs_{int(w)}' for w in wavelengths])
+            X_test_all = extractor.extract_all_features(df_drift)
+            # Try to match the number of features the detector expects
+            if hasattr(detector, 'scaler') and hasattr(detector.scaler, 'n_features_in_'):
+                n_expected = detector.scaler.n_features_in_
+                # Standard feature subsets
+                abs_cols = [c for c in X_test_all.columns if c.startswith('abs_')]
+                if len(abs_cols) == n_expected:
+                    X_test = X_test_all[abs_cols].values
+                else:
+                    # Just take the first N features if we can't match
+                    X_test = X_test_all.iloc[:, :n_expected].values
+            else:
+                X_test = X_test_all.values
+        else:
+            X_test = X_drift_raw
+            
+        y_pred = detector.predict(X_test)
+        normal_rate = np.mean(y_pred == 1)
+        
+        return {
+            'n_samples': n_samples,
+            'predicted_normal_rate': float(normal_rate),
+            'status': "PASS" if normal_rate >= 0.90 else "FAIL"
+        }
+
     def _generate_contaminant_spectrum(self, contaminant_type: ContaminantType,
                                         inoculum_level: float,
                                         process_conditions: ProcessConditions,

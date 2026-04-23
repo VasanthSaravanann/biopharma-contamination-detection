@@ -7,27 +7,6 @@ import glob
 class DataFuser:
     """Fuses surrogate spectral contamination signatures into real process baselines."""
     
-    def __init__(self, ambr_path: str, bacteria_path: str):
-        self.ambr_path = Path(ambr_path)
-        self.bacteria_path = Path(bacteria_path)
-        
-    def get_surrogate_signature(self, contamination_type: str, cfu: str):
-        """Loads a surrogate spectral signature."""
-        pattern = f"*{contamination_type}*{cfu}*"
-        files = glob.glob(str(self.bacteria_path / "**" / pattern), recursive=True)
-        if not files:
-            raise FileNotFoundError(f"No surrogate found for {pattern}")
-        return pd.read_csv(files[0])
-
-import pandas as pd
-import numpy as np
-import logging
-from pathlib import Path
-import glob
-
-class DataFuser:
-    """Fuses surrogate spectral contamination signatures into real process baselines."""
-    
     def __init__(self, ambr_path: str, bacteria_path: str, seed: int = 42):
         self.ambr_path = Path(ambr_path)
         self.bacteria_path = Path(bacteria_path)
@@ -35,10 +14,21 @@ class DataFuser:
         
     def get_surrogate_signature(self, contamination_type: str, cfu: str):
         """Loads spectral signature files."""
-        pattern = f"*{contamination_type}*{cfu}*"
-        files = glob.glob(str(self.bacteria_path / "**" / pattern), recursive=True)
+        # Robust pattern matching: try case-insensitive or partial matches
+        patterns = [
+            f"*{contamination_type}*{cfu}*",
+            f"*{contamination_type.replace('_', '')}*{cfu}*",
+            f"*{contamination_type}*"
+        ]
+        
+        files = []
+        for p in patterns:
+            files = glob.glob(str(self.bacteria_path / "**" / p), recursive=True)
+            if files: break
+            
         if not files:
-            raise FileNotFoundError(f"No surrogate found for {pattern}")
+            raise FileNotFoundError(f"No surrogate found for {contamination_type} {cfu}")
+        
         df = pd.read_csv(files[0])
         # Apply numeric conversion and drop non-numeric columns
         return df.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
