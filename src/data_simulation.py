@@ -291,6 +291,46 @@ class UVVisSpectraGenerator:
         
         # Generate as clean but with drifted conditions
         return self._generate_clean_spectrum(drift_conditions)
+
+    def _generate_benign_scenario_spectrum(self, process_conditions: ProcessConditions,
+                                           scenario: str,
+                                           drift_magnitude: float = 1.0) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Generate benign non-bacterial process-variation spectra.
+
+        Supported scenarios:
+        - ph_drift
+        - temperature_drift
+        - combined_drift
+        """
+        if scenario == 'ph_drift':
+            drift_conditions = ProcessConditions(
+                temperature=process_conditions.temperature,
+                ph=max(6.0, min(8.0, process_conditions.ph - (0.7 * drift_magnitude))),
+                dissolved_oxygen=process_conditions.dissolved_oxygen,
+                batch_age=process_conditions.batch_age + (8 * drift_magnitude),
+                media_type=process_conditions.media_type,
+            )
+        elif scenario == 'temperature_drift':
+            drift_conditions = ProcessConditions(
+                temperature=max(20.0, min(45.0, process_conditions.temperature + (3.0 * drift_magnitude))),
+                ph=process_conditions.ph,
+                dissolved_oxygen=max(0, process_conditions.dissolved_oxygen * (1.0 - 0.1 * drift_magnitude)),
+                batch_age=process_conditions.batch_age + (6 * drift_magnitude),
+                media_type=process_conditions.media_type,
+            )
+        elif scenario == 'combined_drift':
+            drift_conditions = ProcessConditions(
+                temperature=max(20.0, min(45.0, process_conditions.temperature + (2.0 * drift_magnitude))),
+                ph=max(6.0, min(8.0, process_conditions.ph - (0.5 * drift_magnitude))),
+                dissolved_oxygen=max(0, process_conditions.dissolved_oxygen * (1.0 - 0.2 * drift_magnitude)),
+                batch_age=process_conditions.batch_age + (12 * drift_magnitude),
+                media_type=process_conditions.media_type,
+            )
+        else:
+            raise ValueError(f"Unknown benign scenario: {scenario}")
+
+        return self._generate_clean_spectrum(drift_conditions)
     
     def evaluate_benign_drift(self, detector, extractor=None, n_samples: int = 100) -> Dict:
         """
@@ -330,7 +370,75 @@ class UVVisSpectraGenerator:
         return {
             'n_samples': n_samples,
             'predicted_normal_rate': float(normal_rate),
+            'false_positive_rate': float(1.0 - normal_rate),
             'status': "PASS" if normal_rate >= 0.90 else "FAIL"
+        }
+
+    def evaluate_benign_controls(self, detector, extractor=None, n_samples: int = 100,
+                                 scenarios: Optional[List[str]] = None) -> Dict:
+        """
+        Evaluate non-bacterial controls and report false-positive behavior.
+
+        Args:
+            detector: Trained anomaly detector with predict()
+            extractor: Optional SpectralFeatureExtractor
+            n_samples: Samples per scenario
+            scenarios: Optional scenario list
+
+        Returns:
+            Scenario-wise normal/anomaly rates and overall summary
+        """
+        if scenarios is None:
+            scenarios = ['ph_drift', 'temperature_drift']
+
+        wavelengths = self.spectral_params.wavelengths
+        scenario_results = {}
+
+        for scenario in scenarios:
+            records = []
+            for _ in range(n_samples):
+                proc_cond = ProcessConditions().add_variation()
+                _, absorbance = self._generate_benign_scenario_spectrum(
+                    proc_cond,
+                    scenario=scenario,
+                    drift_magnitude=np.random.uniform(0.6, 1.2),
+                )
+                records.append(absorbance)
+
+            X_raw = np.vstack(records)
+
+            if extractor is not None:
+                df_drift = pd.DataFrame(X_raw, columns=[f'abs_{int(w)}' for w in wavelengths])
+                X_test_all = extractor.extract_all_features(df_drift)
+
+                if hasattr(detector, 'scaler') and hasattr(detector.scaler, 'n_features_in_'):
+                    n_expected = detector.scaler.n_features_in_
+                    abs_cols = [c for c in X_test_all.columns if c.startswith('abs_')]
+                    if len(abs_cols) == n_expected:
+                        X_test = X_test_all[abs_cols].values
+                    else:
+                        X_test = X_test_all.iloc[:, :n_expected].values
+                else:
+                    X_test = X_test_all.values
+            else:
+                X_test = X_raw
+
+            y_pred = detector.predict(X_test)
+            normal_rate = float(np.mean(y_pred == 1))
+            scenario_results[scenario] = {
+                'n_samples': int(n_samples),
+                'predicted_normal_rate': normal_rate,
+                'predicted_anomaly_rate': float(1.0 - normal_rate),
+                'false_positive_rate': float(1.0 - normal_rate),
+                'status': 'PASS' if normal_rate >= 0.90 else 'FAIL',
+            }
+
+        avg_normal = np.mean([v['predicted_normal_rate'] for v in scenario_results.values()])
+        return {
+            'scenarios': scenario_results,
+            'average_predicted_normal_rate': float(avg_normal),
+            'average_false_positive_rate': float(1.0 - avg_normal),
+            'overall_status': 'PASS' if avg_normal >= 0.90 else 'FAIL',
         }
 
     def _generate_contaminant_spectrum(self, contaminant_type: ContaminantType,

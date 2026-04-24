@@ -478,7 +478,7 @@ class SyntheticDataVisualizer:
             real_data: Real spectra
             physics_data: Physics-based synthetic spectra
             ddpm_data: DDPM generated spectra
-            method: 'tsne' or 'pca'
+            method: 'tsne', 'umap', or 'pca'
             save_path: Path to save figure
         """
         from sklearn.manifold import TSNE
@@ -493,6 +493,14 @@ class SyntheticDataVisualizer:
         # Dim reduction
         if method == 'tsne':
             reducer = TSNE(n_components=2, random_state=42)
+        elif method == 'umap':
+            try:
+                import umap
+                reducer = umap.UMAP(n_components=2, random_state=42)
+            except Exception:
+                # Graceful fallback keeps the API stable when umap-learn is absent.
+                reducer = TSNE(n_components=2, random_state=42)
+                method = 'tsne (fallback)'
         else:
             reducer = PCA(n_components=2)
             
@@ -519,6 +527,7 @@ class SyntheticDataVisualizer:
                                        synthetic_data: np.ndarray,
                                        wavelengths: np.ndarray,
                                        title: str = "Mean Absolute Difference by Wavelength",
+                                       include_confidence_band: bool = True,
                                        save_path: Optional[str] = None) -> plt.Figure:
         """
         Plot wavelength-wise mean-difference between real and synthetic data.
@@ -531,9 +540,14 @@ class SyntheticDataVisualizer:
         """
         mean_real = np.mean(real_data, axis=0)
         mean_synth = np.mean(synthetic_data, axis=0)
+        std_real = np.std(real_data, axis=0)
+        std_synth = np.std(synthetic_data, axis=0)
+        n_real = max(real_data.shape[0], 1)
+        n_synth = max(synthetic_data.shape[0], 1)
         
         diff = mean_real - mean_synth
-        abs_diff = np.abs(diff)
+        sem_diff = np.sqrt((std_real ** 2) / n_real + (std_synth ** 2) / n_synth)
+        ci95 = 1.96 * sem_diff
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
         
@@ -548,6 +562,15 @@ class SyntheticDataVisualizer:
         ax2.fill_between(wavelengths, 0, diff, where=(diff >= 0), color='green', alpha=0.3, label='Real > Synth')
         ax2.fill_between(wavelengths, 0, diff, where=(diff < 0), color='red', alpha=0.3, label='Synth > Real')
         ax2.plot(wavelengths, diff, color='black', linewidth=1, alpha=0.7)
+        if include_confidence_band:
+            ax2.fill_between(
+                wavelengths,
+                diff - ci95,
+                diff + ci95,
+                color='gray',
+                alpha=0.2,
+                label='95% CI (mean diff)',
+            )
         ax2.axhline(0, color='gray', linestyle='-', linewidth=0.5)
         
         ax2.set_xlabel('Wavelength (nm)')
