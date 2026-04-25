@@ -37,9 +37,20 @@ class ContaminationDetectionPipeline:
         try:
             # 1. Preflight
             root = Path("/run/media/sham/AI_/ai-stack/projects/biopharma-contamination-detection")
-            parser = AmbrDatasetParser(str(root / "FCIC_AMBR_05/Data"))
+            if not root.exists():
+                root = Path(__file__).resolve().parent
+
+            ambr_candidate = root / "FCIC_AMBR_05" / "Data"
+            if not ambr_candidate.exists():
+                ambr_candidate = root / "data" / "FCIC_AMBR_05" / "Data"
+
+            bacteria_candidate = root / "Bacteria Contamination Work"
+            if not bacteria_candidate.exists():
+                bacteria_candidate = root / "data" / "Bacteria Contamination Work"
+
+            parser = AmbrDatasetParser(str(ambr_candidate))
             ambr_df = parser.parse_sensor_files("00001/S")
-            fuser = DataFuser(str(root / "FCIC_AMBR_05/Data"), str(root / "Bacteria Contamination Work"))
+            fuser = DataFuser(str(ambr_candidate), str(bacteria_candidate))
             fused_df = fuser.fuse(ambr_df, "EColi", "10CFU")
             extractor = MultimodalFeatureExtractor(mode='fused')
             X = extractor.extract_features(fused_df)

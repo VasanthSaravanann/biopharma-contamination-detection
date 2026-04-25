@@ -11,6 +11,15 @@ class MultimodalFeatureExtractor:
         self.mode = mode
         self.spectral_scaler = StandardScaler()
         self.process_scaler = RobustScaler()
+
+    @staticmethod
+    def _sanitize_frame(df: pd.DataFrame) -> pd.DataFrame:
+        """Coerce to numeric and remove invalid values before scaling."""
+        clean = df.apply(pd.to_numeric, errors='coerce')
+        clean = clean.replace([np.inf, -np.inf], np.nan)
+        # Clip extreme magnitudes to keep robust scaling numerically stable.
+        clean = clean.clip(lower=-1e12, upper=1e12)
+        return clean.fillna(0.0)
         
     def extract_features(self, df: pd.DataFrame):
         spec_cols = [c for c in df.columns if c.startswith('spec_')]
@@ -24,10 +33,12 @@ class MultimodalFeatureExtractor:
         
         features = []
         if spec_cols:
-            X_spec = self.spectral_scaler.fit_transform(df[spec_cols].fillna(0))
+            X_spec_df = self._sanitize_frame(df[spec_cols])
+            X_spec = self.spectral_scaler.fit_transform(X_spec_df)
             features.append(X_spec)
-        
-        X_proc = self.process_scaler.fit_transform(df[process_cols].fillna(0))
+
+        X_proc_df = self._sanitize_frame(df[process_cols])
+        X_proc = self.process_scaler.fit_transform(X_proc_df)
         features.append(X_proc)
         
         return np.hstack(features)

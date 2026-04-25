@@ -151,8 +151,11 @@ class IsolationForestDetector(AnomalyDetectionBase):
         if not self.is_fitted:
             raise RuntimeError("Model not fitted")
         X_scaled = self.preprocess(X)
-        # Decision function: negative for anomalies, positive for normal
+        # Decision function: negative for anomalies, positive for normal.
+        # Convert to anomaly score where larger means more anomalous and
+        # clamp at zero to keep a stable non-negative score contract.
         scores = -self.model.decision_function(X_scaled)
+        scores = np.maximum(scores, 0.0)
         return scores
     
     def get_path_lengths(self, X: np.ndarray) -> np.ndarray:
