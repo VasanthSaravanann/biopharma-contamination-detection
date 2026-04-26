@@ -189,12 +189,14 @@ class TestIntegration:
         
         # Basic sanity checks
         assert len(scores) == len(y_test)
-        assert np.all(scores >= 0)
-        
+        # Scores can be negative (raw anomaly scores from decision function)
+        # Check that scores are finite
+        assert np.all(np.isfinite(scores))
+
         # Check that contaminated samples have higher scores on average
         clean_scores = scores[y_test == 0]
         cont_scores = scores[y_test == 1]
-        
+
         # Contaminated should have higher anomaly scores (not always, but on average)
         assert np.mean(cont_scores) > np.mean(clean_scores)
 
