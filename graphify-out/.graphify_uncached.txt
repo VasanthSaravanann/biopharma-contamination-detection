@@ -1,0 +1,272 @@
+run_ablation.py
+run_pipeline.py
+run_smoke.py
+tests/test_enhancements.py
+tests/test_mlops.py
+tests/test_pipeline.py
+src/anomaly_detection.py
+src/feature_extraction.py
+src/__init__.py
+src/visualization.py
+src/data_processing.py
+src/data_simulation.py
+src/fusion.py
+src/mh_ddpm.py
+src/validation.py
+src/feature_fusion.py
+requirements.txt
+README.md
+FCIC_AMBR_05/SummaryDetails.REV1.txt
+FCIC_AMBR_05/ambr250 Experiment.txt
+FCIC_AMBR_05/Data/B/06/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/04/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/08/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/01/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/07/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/09/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/11/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/10/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/05/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/02/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/03/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/B/12/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/00001/B/VariableIdentifiers.txt
+FCIC_AMBR_05/Data/00001/S/VariableIdentifiers.txt
+FCIC_AMBR_05/Data/00001/L/VariableIdentifiers.txt
+FCIC_AMBR_05/Data/S/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 8949f844-16dc-40ba-b52c-3dd096772356/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 26a897f5-f69e-4bd1-b97a-192e95bc10d7/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well D2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well C1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well B6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item e3828ee3-7406-40e5-b2b3-3b36584a2556/Well A5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well D2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well C1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well B6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item c2c8ebbd-0c59-4291-a2f3-85765e4cd196/Well A5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 705769dc-dbe1-46d9-b394-4b41eecca4a7/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 3cd16d3e-70fe-40fc-9d7d-16fe6f286260/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 91b8d2c9-a871-49d0-9d93-31a169e9dd0c/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item de0d7954-6ba5-4554-8634-d6f091e6a484/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well D2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well C1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well B6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item d8375c7e-5593-42d5-bdfb-574c0301f0bb/Well A5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7f0c4d43-7b67-4d68-a2de-a20b4f0e34b0/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well D2/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B4/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C3/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well C1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B1/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well B6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A6/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item 7934c69a-6f63-4a8a-92ae-f61ff69e2d8b/Well A5/StreamFormat.REV1.txt
+FCIC_AMBR_05/Data/L/Labware item f783fc47-393f-420e-915e-87a27067382f/Well/StreamFormat.REV1.txt
+FCIC_AMBR_05/Audit/Export Version History.txt
+FCIC_AMBR_05/Audit/Runtime Version History.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/FeaturesLicensedInRuntime.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/SystemOptions.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/B0061 DCComms control board.Version.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ProgramFiles.Version.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr250SerialNumber.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/PegasusConfiguration.Version.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/B0092 Pegasus bioreactor control board.Version.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/OPC configuration/OPCOptions.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/RuntimeSettings/RuntimeState.REV2790.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/RuntimeSettings/RuntimeState.REV2792.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/RuntimeSettings/RuntimeState.REV2791.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Geometry/Plate Geometry.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Geometry/1mL tip box.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Board parameters/B0076_Analysis_Module.Version.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 4 Tower to pump leak/IsSupervisor.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 4 Tower to pump leak/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 1 Cycle pinch valves/IsSupervisor.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 1 Cycle pinch valves/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 2 Labware pressure sensors (not connected)/IsSupervisor.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 2 Labware pressure sensors (not connected)/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 5 Tower to pump tubing/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 7 Sideplate heater/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 6 Tower to pump flow/IsSupervisor.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 6 Tower to pump flow/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TestScripts/Perfusion/ 3 Labware pressure sensors (connected)/Script.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/pH Check Station/pHCheckStationOptions.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Config/Config.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_CHECK.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_PARK.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/STERILISE.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_STERILISE.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_QUICKCAL.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_READ.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/loadsensor.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/loadsample.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_PRIME.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/rinseph.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_CALIBRATE.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_CLEAN.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/checkfull.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/_UpdatePrimeScriptsForLongerTubeLengths.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/checkempty.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/washph.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/PH_CONDITION.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Protocols/ProtocolConfiguration.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Liquids/LiquidUsage.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Liquids/LiquidPrimed.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Liquids/LiquidRefilled.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Liquids/LiquidConfiguration.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Liquids/LiquidLevels.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/CalibrationConfiguration.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/GlucoseValidReadings.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/TemperatureProfiles.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/MediaProfiles.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/GlucoseCalibrationPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/PHValidReadings.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/PHCalibrationPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/ambr_AM/Calibration/PHCalibrationHistory.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/DCCommsBoard.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/PumpRoles.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/pHCheckStationBoard.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/AnalysisModuleSettings.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Pegasus Liquid Handler Parameters.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Pegasus Liquid Handler OFFSETS ETC.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Pegasus Liquid Handler Defaulted Parameters.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Pegasus Liquid Handler Teach Parameters.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/RefillRates.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/WebInterface.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Bioreactors.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Pegasus DO Reader Parameters.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G37.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G13.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G84.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G27.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G31.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G25.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G31.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G23.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G11.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/2G11.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G13.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G86.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/BioreactorVesselTypes_HT/5G21.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Ports/Balance.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Ports/BioreactorsGroup1.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Ports/DCCommsBoardPort.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Ports/pHCheckStation.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Gassing/Mammallian (Air, Oxygen, Carbon Dioxide).txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Gassing/Mammallian (Nitrogen, Oxygen, Carbon Dioxide)xHS.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Gassing/Mammallian (Nitrogen, Oxygen, Carbon Dioxide).txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Gassing/Mammallian (Air, Oxygen, Carbon Dioxide)xHS.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Parameters/Gassing/Microbial (Air, Oxygen, Nitrogen).txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHGeneralTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHPlateTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHCultureVesselTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHPipetteDowelTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/DOReaderTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHBottleTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/TeachPoints/LHPipetteTeachPoints.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/CellCounter/CellCounterCellTypes.txt
+FCIC_AMBR_05/Configuration/2020-10-16 19-58-14-64772/Machine Control/DO Reader/DOSensor_13.txt
+research paper/Quantum_Crew_Real_Time_Microbial_Contamination_Detection .pdf
+research paper/references/agronomy-15-02648.pdf
+research paper/references/1-s2.0-S0731708521004908-main.pdf
+research paper/references/processes-12-00251.pdf
+research paper/references/processes-13-02544.pdf
+research paper/references/EfficientTransformer_A_Dynamic_Anomaly_Detection_Model_for_Industrial_Control_Networks.pdf
+research paper/references/A_New_Hyperspectral_Reconstruction_Method_With_Conditional_Diffusion_Model_for_Snapshot_Spectral_Compressive_Imaging.pdf
+research paper/references/sensors-25-04401-v3.pdf
+research paper/references/sensors-25-04114-v3.pdf
+research paper/references/41598_2025_Article_29257.pdf
+research paper/references/bioengineering-11-01143.pdf
+research paper/references/Machine_Learning-Based_Detection_of_Anomalies_Intrusions_and_Threats_in_Industrial_Control_Systems.pdf
+research paper/references/Conditional_Diffusion_Models_A_Survey_of_Technique.pdf
+research paper/references/biosensors-15-00284.pdf
+research paper/references/molecules-27-04846.pdf
+research paper/references/processes-12-00495-v4.pdf
+research paper/references/microorganisms-13-02562.pdf
+research paper/references/pharmaceutics-17-00623.pdf
+research paper/references/sensors-24-02833-v2.pdf
+research paper/references/sensors-25-06961.pdf
+research paper/references/processes-13-01498-v2.pdf
+research paper/references/s41598-024-83114-y.pdf
+figures/roc_feature_comparison.png
+figures/sterile_vs_contaminated.png
+figures/roc_curves_real.png
+figures/spectra_by_organism.png
+figures/absorbance_by_cfu.png
+figures/dose_response.png
+figures/dose_response_v2.png
