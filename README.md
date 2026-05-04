@@ -27,9 +27,9 @@ This system implements a **real-data-driven** contamination-detection workflow:
 | Dataset | Location | Description |
 |---------|----------|-------------|
 | **UV-Vis Spectra** | `Bacteria Contamination Work/` | Agilent Cary 60, 200-800 nm, sterile & contaminated samples |
-| **AMBR Process Data** | `FCIC_AMBR_05/Data/` | pH, DO, temperature, conductivity at 5-min intervals |
+| **AMBR Process Data** | `FCIC_AMBR_05/` | pH, DO, temperature, conductivity at 5-min intervals |
 
-**Note:** Large data files are not tracked in git. Ensure both directories are present before running the pipeline.
+**Note:** Large data files are not tracked in git. Ensure the directories are present before running the pipeline.
 
 ## 🏗️ Architecture
 
@@ -109,6 +109,7 @@ biopharma-test-suite/
 │   └── 01-11_*.ipynb                  # Modular notebooks
 ├── Bacteria Contamination Work/       # UV-Vis data (not in git)
 ├── FCIC_AMBR_05/                      # AMBR data (not in git)
+├── research paper/                    # Research paper materials (not in git)
 ├── run_pipeline.py                    # Main production pipeline
 ├── run_smoke.py                       # Quick smoke test
 ├── run_ablation.py                    # Ablation studies
