@@ -29,7 +29,9 @@ This system implements a **real-data-driven** contamination-detection workflow:
 | **UV-Vis Spectra** | `Bacteria Contamination Work/` | Agilent Cary 60, 200-800 nm, sterile & contaminated samples |
 | **AMBR Process Data** | `FCIC_AMBR_05/` | pH, DO, temperature, conductivity at 5-min intervals |
 
-**Note:** Large data files are not tracked in git. Ensure the directories are present before running the pipeline.
+**Note:** Large data files are not tracked in git due to size constraints. The repository contains the complete pipeline code and documentation, but requires users to provide their own data files from the original sources.
+
+**Important:** Running the full pipeline will fail without the required data files in `Bacteria Contamination Work/` and `FCIC_AMBR_05/` directories. The code is designed to work with real biopharmaceutical data but cannot be demonstrated without access to the proprietary datasets.
 
 ## 🏗️ Architecture
 
