@@ -17,6 +17,7 @@ from src.feature_fusion import MultimodalFeatureExtractor, evaluate_roc_gate
 from src.anomaly_detection import EnsembleAnomalyDetector, OneClassSVMDetector, ModelConfig, evaluate_detector
 from src.metrics.latency import measure_latency
 from src.metrics.drift import compute_drift_acceptance
+from src.metrics.pca_baseline import compute_pca_baseline_auc
 
 class ContaminationDetectionPipeline:
     def __init__(self, config: Dict[str, Any], output_dir: str = "output"):
@@ -219,6 +220,21 @@ class ContaminationDetectionPipeline:
             base_detector.fit(X_train[y_train == 0])
             base_auc = evaluate_detector(base_detector, X_test, y_test, "OCSVM_Baseline")['roc_auc']
             print(f"Baseline (OCSVM) AUC: {base_auc:.4f}", flush=True)
+
+            # PCA reconstruction baseline
+            try:
+                pca_cfg = pipeline_config.get('baseline', {}).get('pca', {})
+                pca_res = compute_pca_baseline_auc(
+                    X_train[y_train == 0],
+                    X_test,
+                    y_test,
+                    n_components=pca_cfg.get('n_components', None)
+                )
+                metrics['pca_baseline'] = pca_res
+                print(f"PCA baseline AUC: {pca_res.get('pca_reconstruction_auc', 'NA')}", flush=True)
+            except Exception as e:
+                metrics['pca_baseline'] = {"error": str(e)}
+                print(f"PCA baseline computation failed: {e}", flush=True)
             
             # Train ensemble detector
             detector = EnsembleAnomalyDetector(X.shape[1], model_cfg, use_conv=True)
