@@ -15,6 +15,7 @@ from src.data_integration import UnifiedDataset, CECDataParser
 from src.fusion import DataFuser
 from src.feature_fusion import MultimodalFeatureExtractor, evaluate_roc_gate
 from src.anomaly_detection import EnsembleAnomalyDetector, OneClassSVMDetector, ModelConfig, evaluate_detector
+from src.metrics.latency import measure_latency
 
 class ContaminationDetectionPipeline:
     def __init__(self, config: Dict[str, Any], output_dir: str = "output"):
@@ -240,6 +241,21 @@ class ContaminationDetectionPipeline:
                 "shuffled_auc": ensemble_shuffled_auc,
                 "base_shuffled_auc": base_shuffled_auc,
             }
+
+            # 7a. Measure inference latency (batch-based, aggregated per-sample)
+            perf_cfg = pipeline_config.get('performance', {})
+            try:
+                lat_metrics = measure_latency(
+                    detector,
+                    X_test,
+                    n_repeats=perf_cfg.get('latency_repeats', 10),
+                    max_samples=perf_cfg.get('latency_max_samples', 200)
+                )
+                metrics['latency_ms'] = lat_metrics
+                print(f"Latency (ms/sample) mean: {lat_metrics['per_sample_ms']['mean']:.4f}", flush=True)
+            except Exception as e:
+                metrics['latency_ms'] = {"error": str(e)}
+                print(f"Latency measurement failed: {e}", flush=True)
             
             print("Checking gates...", flush=True)
             val_cfg = pipeline_config['validation']
