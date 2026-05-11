@@ -11,6 +11,8 @@ This system implements a **real-data-driven** contamination-detection workflow:
 - **Anomaly Detection**: Unsupervised ensemble (Isolation Forest, Deep Autoencoder, One-Class SVM)
 - **Comprehensive Validation**: Detection limits, sensitivity/specificity, zero-shot generalization
 
+Note: The MH-DDPM model included in this repository is intended for synthetic data augmentation in ablation experiments only and is disabled by default in the deployed detection path. See `config/pipeline_config.yaml` for the `ablation.mh_ddpm_enabled` flag.
+
 ## 🔬 Key Results
 
 | Metric | Target | Achieved |
@@ -307,3 +309,18 @@ For questions or collaboration, please open a GitHub issue.
 ---
 
 *Research-ready code for biopharmaceutical contamination detection*
+
+## 🔁 Reproducibility
+
+The results reported in this repository are reproducible from the run artifacts saved in `output/results/run_bundle.json`. The most recent recorded run for this repository is:
+
+- Commit: `628995775755b20fa610abccfdbce33c767437fc`
+- Command: `python run_pipeline.py --experiment EColi_10CFU --config config/pipeline_config.yaml --output output`
+- Key metrics (from `output/results/run_bundle.json`):
+    - `ensemble_auc`: 0.5471006188402476
+    - `base_auc`: 0.9422820239716331
+    - `shuffled_auc`: 0.5064782731795445
+    - `base_shuffled_auc`: 0.49005676072858667
+    - `gate.passed`: true
+
+If you intend to cite precise numeric claims (AUC, latency, detection limit, drift ratios), please reference the exact commit and the corresponding `run_bundle.json` artifact or re-run the pipeline with the same `config/pipeline_config.yaml` and random seed to reproduce measurements.
