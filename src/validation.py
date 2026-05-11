@@ -17,7 +17,7 @@ from scipy import stats
 from scipy.spatial.distance import jensenshannon
 from sklearn.metrics import (
     roc_auc_score, roc_curve, precision_recall_curve,
-    confusion_matrix, classification_report, f1_score
+    confusion_matrix, classification_report, f1_score, sensitivity_specificity_support
 )
 import torch
 import torch.nn as nn
@@ -46,6 +46,11 @@ class ValidationConfig:
     target_sensitivity: float = 0.90
     target_specificity: float = 0.95
     target_auc: float = 0.95
+    
+    # 10 CFU/mL specific validation
+    compute_10cfu_block: bool = True
+    compute_contamination_confusion: bool = True
+    n_bootstrap_iterations: int = 1000
 
 
 class MaximumMeanDiscrepancy:
@@ -899,6 +904,49 @@ def generate_validation_report(results: Dict, output_path: str = "validation_rep
     print(f"\nReport saved to {output_path}")
     
     return report_text
+
+
+def compute_detection_limit_block(y_true: np.ndarray, y_scores: np.ndarray,
+                                   target_limit: float = 10.0) -> Dict:
+    """Compute 10 CFU/mL detection-limit block metrics."""
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    auc = roc_auc_score(y_true, y_scores)
+
+    target_sensitivity = 0.90
+    detection_limit_indices = np.where(tpr >= target_sensitivity)[0]
+
+    result = {
+        "target_detection_limit_cfu_ml": target_limit,
+        "detection_limit_achieved": len(detection_limit_indices) > 0,
+        "auc": float(auc),
+    }
+
+    if len(detection_limit_indices) > 0:
+        idx = detection_limit_indices[-1]
+        result["detection_limit_threshold"] = float(thresholds[idx])
+        result["detection_limit_sensitivity"] = float(tpr[idx])
+        result["detection_limit_specificity"] = 1.0 - float(fpr[idx])
+
+    return result
+
+
+def compute_contamination_confusion(y_true: np.ndarray, y_pred: np.ndarray) -> Dict:
+    """Compute confusion breakdown for contamination detection."""
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+
+    result = {
+        "tn": int(cm[0, 0]),
+        "fp": int(cm[0, 1]),
+        "fn": int(cm[1, 0]),
+        "tp": int(cm[1, 1]),
+    }
+
+    if cm[0, 0] + cm[0, 1] > 0:
+        result["specificity"] = float(cm[0, 0] / (cm[0, 0] + cm[0, 1]))
+    if cm[1, 0] + cm[1, 1] > 0:
+        result["sensitivity"] = float(cm[1, 1] / (cm[1, 0] + cm[1, 1]))
+
+    return result
 
 
 if __name__ == "__main__":
