@@ -7,10 +7,12 @@ import logging
 class MultimodalFeatureExtractor:
     """Extracts and scales features from UV-Vis spectral and AMBR sensor process variables."""
     
-    def __init__(self, mode: str = 'fused'):
+    def __init__(self, mode: str = 'fused', expanded_feature_columns=None):
         self.mode = mode
         self.spectral_scaler = StandardScaler()
         self.process_scaler = RobustScaler()
+        self.expanded_feature_columns = list(expanded_feature_columns or [])
+        self.expanded_scaler = RobustScaler()
 
     @staticmethod
     def _sanitize_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -28,12 +30,20 @@ class MultimodalFeatureExtractor:
         process_cols = [c for c in df.columns 
                        if not c.startswith('spec_') 
                        and not any(pattern.lower() in c.lower() for pattern in exclude_patterns)]
+        expanded_cols = [
+            c for c in self.expanded_feature_columns
+            if c in df.columns and c not in spec_cols and c not in process_cols
+        ]
         
-        logging.info(f"Preflight: Found {len(spec_cols)} spectral, {len(process_cols)} process channels.")
+        logging.info(
+            f"Preflight: Found {len(spec_cols)} spectral, {len(process_cols)} process, {len(expanded_cols)} expanded channels."
+        )
         
         if self.mode == 'fused':
-            if len(spec_cols) == 0 or len(process_cols) == 0:
-                raise ValueError(f"Schema Error: Fused mode requires spectra and process features. Found {len(spec_cols)} spectra, {len(process_cols)} process.")
+            if len(spec_cols) == 0 or (len(process_cols) == 0 and len(expanded_cols) == 0):
+                raise ValueError(
+                    f"Schema Error: Fused mode requires spectra and process or expanded features. Found {len(spec_cols)} spectra, {len(process_cols)} process, {len(expanded_cols)} expanded."
+                )
         
         features = []
         if spec_cols:
@@ -50,6 +60,11 @@ class MultimodalFeatureExtractor:
         
         X_proc = self.process_scaler.fit_transform(X_proc_raw)
         features.append(X_proc)
+
+        if expanded_cols:
+            X_expanded_raw = self._sanitize_frame(df[expanded_cols])
+            X_expanded = self.expanded_scaler.fit_transform(X_expanded_raw)
+            features.append(X_expanded)
         
         return np.hstack(features)
 

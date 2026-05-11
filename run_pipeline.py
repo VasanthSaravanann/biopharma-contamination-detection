@@ -155,7 +155,11 @@ class ContaminationDetectionPipeline:
                 provenance["baseline_sources"] = ["AMBR", "CEC_04_2L_Fermentation"]
             
             # 4. Feature extraction
-            extractor = MultimodalFeatureExtractor(mode='fused')
+            expanded_feature_columns = pipeline_config.get('features', {}).get('expanded_feature_columns', [])
+            extractor = MultimodalFeatureExtractor(
+                mode='fused',
+                expanded_feature_columns=expanded_feature_columns,
+            )
             X = extractor.extract_features(fused_df)
             y = fused_df['label'].values
             
@@ -252,12 +256,12 @@ class ContaminationDetectionPipeline:
             base_shuffled_auc = roc_auc_score(y_test, base_detector.predict_proba(X_test_shuffled))
             print(f"Shuffled AUC (Ensemble): {ensemble_shuffled_auc:.4f}", flush=True)
             print(f"Shuffled AUC (Baseline): {base_shuffled_auc:.4f}", flush=True)
-            metrics = {
+            metrics.update({
                 "ensemble_auc": ensemble_auc,
                 "base_auc": base_auc,
                 "shuffled_auc": ensemble_shuffled_auc,
                 "base_shuffled_auc": base_shuffled_auc,
-            }
+            })
 
             # 7a. Measure inference latency (batch-based, aggregated per-sample)
             perf_cfg = pipeline_config.get('performance', {})
@@ -329,6 +333,7 @@ class ContaminationDetectionPipeline:
                     "ensemble_strategy": ensemble_cfg['weighting_strategy'],
                     "split_strategy": split_cfg['strategy'],
                     "feature_mode": pipeline_config['features']['mode'],
+                    "expanded_feature_columns": expanded_feature_columns,
                     "selected_detector": selected_detector,
                     "require_ensemble_superiority": require_ensemble_superiority,
                 }

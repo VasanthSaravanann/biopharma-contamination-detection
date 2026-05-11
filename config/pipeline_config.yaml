@@ -131,6 +131,17 @@ features:
   # Handle missing values: "drop", "mean", "ffill"
   missing_value_strategy: "ffill"
 
+  # Optional expanded feature columns to include when present in the fused dataframe.
+  # These are hooks for additional process-state variables such as dissolved CO2,
+  # off-gas composition, or metabolite profiles when they are available from the source data.
+  expanded_feature_columns:
+    - "dissolved_co2"
+    - "offgas_co2"
+    - "offgas_o2"
+    - "glucose"
+    - "lactate"
+    - "acetate"
+
 # ============================================================================
 # ANOMALY DETECTION ENSEMBLE
 # ============================================================================

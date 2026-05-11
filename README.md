@@ -13,6 +13,12 @@ This system implements a **real-data-driven** contamination-detection workflow:
 
 Note: The MH-DDPM model included in this repository is intended for synthetic data augmentation in ablation experiments only and is disabled by default in the deployed detection path. See `config/pipeline_config.yaml` for the `ablation.mh_ddpm_enabled` flag.
 
+Additional implementation notes:
+
+- Measurement protocol: `docs/measurement_protocol.md`
+- Wet-lab validation gap and study design: `docs/wet_lab_validation_plan.md`
+- Optional expanded feature hooks: `config/pipeline_config.yaml` and `src/feature_fusion.py`
+
 ## 🔬 Key Results
 
 | Metric | Target | Achieved |
