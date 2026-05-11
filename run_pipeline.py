@@ -16,6 +16,7 @@ from src.fusion import DataFuser
 from src.feature_fusion import MultimodalFeatureExtractor, evaluate_roc_gate
 from src.anomaly_detection import EnsembleAnomalyDetector, OneClassSVMDetector, ModelConfig, evaluate_detector
 from src.metrics.latency import measure_latency
+from src.metrics.drift import compute_drift_acceptance
 
 class ContaminationDetectionPipeline:
     def __init__(self, config: Dict[str, Any], output_dir: str = "output"):
@@ -256,6 +257,23 @@ class ContaminationDetectionPipeline:
             except Exception as e:
                 metrics['latency_ms'] = {"error": str(e)}
                 print(f"Latency measurement failed: {e}", flush=True)
+
+            # 7b. Compute drift acceptance metric between training baseline and test
+            try:
+                drift_cfg = pipeline_config.get('validation', {}).get('drift', {})
+                # Use training clean data as reference if available
+                X_ref = X_train
+                X_tgt = X_test
+                drift_res = compute_drift_acceptance(
+                    X_ref,
+                    X_tgt,
+                    alpha=drift_cfg.get('alpha', 0.05),
+                )
+                metrics['drift_acceptance'] = drift_res
+                print(f"Drift acceptance ratio: {drift_res.get('acceptance_ratio', 'NA'):.3f}", flush=True)
+            except Exception as e:
+                metrics['drift_acceptance'] = {"error": str(e)}
+                print(f"Drift computation failed: {e}", flush=True)
             
             print("Checking gates...", flush=True)
             val_cfg = pipeline_config['validation']
