@@ -754,6 +754,60 @@ class SyntheticDataGenerator:
         )
 
 
+def evaluate_ddpm_baselines(raw_model: MHDDPM,
+                            feature_model: FeatureDiffusionModel,
+                            n_samples: int = 100,
+                            contaminant_type: int = 0,
+                            inoculum_level: int = 0) -> Dict:
+    """
+    Generate side-by-side baseline samples from raw-spectrum and feature DDPM models.
+
+    Args:
+        raw_model: Trained MHDDPM on spectra
+        feature_model: Trained FeatureDiffusionModel on extracted features
+        n_samples: Number of samples per baseline
+        contaminant_type: Contaminant class index
+        inoculum_level: Inoculum class index
+
+    Returns:
+        Dictionary containing generated samples and summary statistics.
+    """
+    raw_gen = SyntheticDataGenerator(raw_model)
+    raw_samples = raw_gen.generate(
+        n_samples=n_samples,
+        contaminant_type=contaminant_type,
+        inoculum_level=inoculum_level,
+        progress=False,
+    )
+
+    feature_samples = feature_model.sample_features(
+        n_samples=n_samples,
+        contaminant_type=contaminant_type,
+        inoculum_level=inoculum_level,
+        progress=False,
+    )
+
+    return {
+        'raw_spectrum': {
+            'samples': raw_samples,
+            'shape': tuple(raw_samples.shape),
+            'mean': float(np.mean(raw_samples)),
+            'std': float(np.std(raw_samples)),
+        },
+        'feature_space': {
+            'samples': feature_samples,
+            'shape': tuple(feature_samples.shape),
+            'mean': float(np.mean(feature_samples)),
+            'std': float(np.std(feature_samples)),
+        },
+        'side_by_side': {
+            'n_samples': int(n_samples),
+            'contaminant_type': int(contaminant_type),
+            'inoculum_level': int(inoculum_level),
+        },
+    }
+
+
 if __name__ == "__main__":
     # Test MH-DDPM model
     from data_simulation import UVVisSpectraGenerator, ContaminantType

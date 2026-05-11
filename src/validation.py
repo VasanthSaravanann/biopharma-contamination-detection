@@ -369,10 +369,16 @@ class DetectionMetrics:
         # Group by inoculum level
         contaminated_mask = y_true == 1
         levels = sorted(np.unique(inoculum_levels[contaminated_mask]))
-        
+
         # Calculate threshold from clean data (95th percentile)
         clean_scores = scores[y_true == 0]
+        if len(clean_scores) == 0:
+            raise ValueError("Detection limit requires clean scores for threshold estimation")
         threshold = np.percentile(clean_scores, 95)
+        fp_clean = int(np.sum(clean_scores >= threshold))
+        tn_clean = int(np.sum(clean_scores < threshold))
+        total_clean = max(len(clean_scores), 1)
+        fixed_fpr = fp_clean / total_clean
         
         detection_results = []
         for level in levels:
@@ -382,12 +388,19 @@ class DetectionMetrics:
             if len(level_scores) == 0:
                 continue
                 
-            detection_rate = np.mean(level_scores > threshold)
+            detection_rate = np.mean(level_scores >= threshold)
+            tp = int(np.sum(level_scores >= threshold))
+            fn = int(np.sum(level_scores < threshold))
             
             detection_results.append({
                 'inoculum_level': float(level),
                 'detection_rate': float(detection_rate),
                 'n_samples': int(len(level_scores)),
+                'tp': tp,
+                'fn': fn,
+                'fp_clean_reference': fp_clean,
+                'tn_clean_reference': tn_clean,
+                'fpr_clean_reference': float(fixed_fpr),
             })
         
         # Find detection limit (level with >= 90% detection rate)
@@ -405,8 +418,69 @@ class DetectionMetrics:
             'by_level': detection_results,
             'detection_limit_90': detection_limit,
             'threshold_used': float(threshold),
+            'false_positives_clean': fp_clean,
+            'true_negatives_clean': tn_clean,
+            'false_positive_rate_clean': float(fixed_fpr),
             'target_detection_limit': self.config.target_detection_limit,
             'meets_target': detection_limit <= self.config.target_detection_limit
+        }
+
+    def calculate_tier_confusion_metrics(self, y_true: np.ndarray,
+                                         scores: np.ndarray,
+                                         inoculum_levels: np.ndarray,
+                                         target_level: float,
+                                         threshold: Optional[float] = None) -> Dict:
+        """
+        Calculate tier-isolated confusion matrix against clean controls.
+
+        Args:
+            y_true: Ground truth labels (0 clean, 1 contaminated)
+            scores: Anomaly scores (higher = more anomalous)
+            inoculum_levels: CFU/mL values
+            target_level: CFU/mL tier to isolate
+            threshold: Optional fixed threshold (clean 95th used if None)
+
+        Returns:
+            Confusion metrics for clean + target-tier subset
+        """
+        clean_mask = y_true == 0
+        tier_mask = (y_true == 1) & np.isclose(inoculum_levels, target_level)
+
+        if not np.any(tier_mask):
+            return {}
+
+        if threshold is None:
+            clean_scores = scores[clean_mask]
+            if len(clean_scores) == 0:
+                raise ValueError("Tier confusion metrics require clean controls")
+            threshold = float(np.percentile(clean_scores, 95))
+
+        combined_mask = clean_mask | tier_mask
+        y_subset = y_true[combined_mask]
+        y_pred_subset = (scores[combined_mask] >= threshold).astype(int)
+
+        tn, fp, fn, tp = confusion_matrix(y_subset, y_pred_subset, labels=[0, 1]).ravel()
+
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+        fnr = fn / (fn + tp) if (fn + tp) > 0 else 0.0
+
+        return {
+            'target_level_cfu_ml': float(target_level),
+            'threshold_used': float(threshold),
+            'tp': int(tp),
+            'fp': int(fp),
+            'tn': int(tn),
+            'fn': int(fn),
+            'TP': int(tp),
+            'FP': int(fp),
+            'TN': int(tn),
+            'FN': int(fn),
+            'sensitivity': float(sensitivity),
+            'specificity': float(specificity),
+            'fpr': float(fpr),
+            'fnr': float(fnr),
         }
     
     def bootstrap_confidence_intervals(self, y_true: np.ndarray,
@@ -697,37 +771,15 @@ class ValidationPipeline:
             scores, inoculum_levels, y_test
         )
         
-        # Explicit 10 CFU/mL analysis
-        target_lod = 10.0
-        mask_10 = (inoculum_levels == target_lod) & (y_test == 1)
-        mask_clean = (y_test == 0)
-        
-        confusion_10 = {}
-        if np.any(mask_10):
-            scores_10 = scores[mask_10]
-            scores_clean = scores[mask_clean]
-            
-            # Use threshold from detection limit calculation (95th percentile of clean)
-            threshold = detection_limit.get('threshold_used', np.percentile(scores_clean, 95))
-                
-            tp_10 = np.sum(scores_10 > threshold)
-            fn_10 = np.sum(scores_10 <= threshold)
-            fp_clean = np.sum(scores_clean > threshold)
-            tn_clean = np.sum(scores_clean <= threshold)
-            
-            total_10 = len(scores_10)
-            total_clean = len(scores_clean)
-            
-            confusion_10 = {
-                'tp': int(tp_10),
-                'fn': int(fn_10),
-                'fp': int(fp_clean),
-                'tn': int(tn_clean),
-                'sensitivity': float(tp_10 / total_10),
-                'specificity': float(tn_clean / total_clean),
-                'fpr': float(fp_clean / total_clean),
-                'fnr': float(fn_10 / total_10)
-            }
+        # Explicit 10 CFU/mL analysis (clean controls + 10 CFU positives only)
+        target_lod = float(self.config.target_detection_limit)
+        confusion_10 = self.metrics_calculator.calculate_tier_confusion_metrics(
+            y_true=y_test,
+            scores=scores,
+            inoculum_levels=inoculum_levels,
+            target_level=target_lod,
+            threshold=detection_limit.get('threshold_used'),
+        )
         
         # Bootstrap confidence intervals
         ci = self.metrics_calculator.bootstrap_confidence_intervals(
@@ -875,6 +927,25 @@ def generate_validation_report(results: Dict, output_path: str = "validation_rep
     report.append(f"Achieved: {dl['detection_limit_90']} CFU/mL" if dl['detection_limit_90'] else "Not achieved")
     report.append(f"Meets Target: {dl['meets_target']}")
     report.append("")
+
+    # Tier-isolated confusion metrics at target LOD (default 10 CFU/mL)
+    conf_10 = dv.get('confusion_10cfu', {})
+    if conf_10:
+        report.append(f"{int(conf_10.get('target_level_cfu_ml', 10))} CFU/ML TIER CONFUSION METRICS")
+        report.append("-" * 40)
+        report.append(
+            f"TP={conf_10.get('TP', conf_10.get('tp', 0))}, "
+            f"FP={conf_10.get('FP', conf_10.get('fp', 0))}, "
+            f"TN={conf_10.get('TN', conf_10.get('tn', 0))}, "
+            f"FN={conf_10.get('FN', conf_10.get('fn', 0))}"
+        )
+        report.append(
+            f"Sensitivity={conf_10.get('sensitivity', 0):.4f}, "
+            f"Specificity={conf_10.get('specificity', 0):.4f}, "
+            f"FPR={conf_10.get('fpr', 0):.4f}, "
+            f"FNR={conf_10.get('fnr', 0):.4f}"
+        )
+        report.append("")
     
     # Detection Window
     dw = results['detection_window']

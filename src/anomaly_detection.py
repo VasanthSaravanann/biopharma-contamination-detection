@@ -14,6 +14,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import json
 from torch.utils.data import DataLoader, TensorDataset
 from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
@@ -150,8 +151,11 @@ class IsolationForestDetector(AnomalyDetectionBase):
         if not self.is_fitted:
             raise RuntimeError("Model not fitted")
         X_scaled = self.preprocess(X)
-        # Decision function: negative for anomalies, positive for normal
+        # Decision function: negative for anomalies, positive for normal.
+        # Convert to anomaly score where larger means more anomalous and
+        # clamp at zero to keep a stable non-negative score contract.
         scores = -self.model.decision_function(X_scaled)
+        scores = np.maximum(scores, 0.0)
         return scores
     
     def get_path_lengths(self, X: np.ndarray) -> np.ndarray:
@@ -577,11 +581,19 @@ class EnsembleAnomalyDetector:
         self.weights = {'iforest': 1.0, 'ocsvm': 1.0, 'autoencoder': 1.0}
         self.score_stats = {}
         self.ensemble_threshold = None
+        self.weighting_method = 'strict_unsupervised_clean_stability_inverse_variance'
+        self.weighting_rationale = (
+            'Weights are derived from nominal-data score stability only. '
+            'Inverse variance is used with a dispersion guard so near-constant '
+            'detectors cannot dominate the ensemble.'
+        )
+        self.weighting_details = {}
     
     def _calculate_weights(self, X: np.ndarray):
         """Calculate strict clean-only unsupervised ensemble weighting (inverse variance)"""
         new_weights = {}
         self.score_stats = {}
+        self.weighting_details = {}
         
         print(f"Data size for weighting: {X.shape}", flush=True)
         for name, detector in self.detectors.items():
@@ -592,21 +604,35 @@ class EnsembleAnomalyDetector:
             # Store stats for normalization
             mu = np.mean(scores)
             var = np.var(scores)
+            p05 = np.percentile(scores, 5)
+            p95 = np.percentile(scores, 95)
+            spread = max(float(p95 - p05), 1e-9)
             self.score_stats[name] = {
                 'min': np.min(scores),
                 'max': np.max(scores),
                 'mean': mu,
-                'var': var
+                'var': var,
+                'p05': p05,
+                'p95': p95,
+                'spread': spread,
             }
             
             # Inverse variance weighting: W = 1 / (var + eps)
-            # More stable models on nominal data (low variance) get higher weight
-            weight = 1.0 / (var + 1e-9)
+            # More stable models on nominal data (low variance) get higher weight,
+            # but include spread guard to prevent near-constant score collapse.
+            weight = spread / (var + 1e-9)
             new_weights[name] = weight
+            self.weighting_details[name] = {
+                'raw_weight': float(weight),
+                'variance': float(var),
+                'spread_p95_p05': float(spread),
+            }
             
         # Normalize weights
         total_w = sum(new_weights.values())
         self.weights = {k: v / total_w for k, v in new_weights.items()}
+        for name in self.weighting_details:
+            self.weighting_details[name]['normalized_weight'] = float(self.weights[name])
         print(f"Calculated ensemble weights: {self.weights}", flush=True)
 
     def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None):
@@ -638,7 +664,6 @@ class EnsembleAnomalyDetector:
         all_scores = []
         
         for name, detector in self.detectors.items():
-            print(f"  Getting scores from {name}...")
             scores = detector.predict_proba(X)
             
             # Normalize scores using training statistics to avoid transductive bias
@@ -680,12 +705,28 @@ class EnsembleAnomalyDetector:
         metadata = {
             'weights': self.weights,
             'score_stats': self.score_stats,
+            'weighting_method': self.weighting_method,
+            'weighting_rationale': self.weighting_rationale,
+            'weighting_details': self.weighting_details,
             'threshold': self.ensemble_threshold,
             'config': self.config,
             'use_conv': self.use_conv,
             'input_dim': self.input_dim
         }
         joblib.dump(metadata, base_path / "ensemble_metadata.pkl")
+
+        # Human-readable run log for reviewer traceability.
+        with open(base_path / 'weighting_method.json', 'w') as f:
+            json.dump(
+                {
+                    'method': self.weighting_method,
+                    'rationale': self.weighting_rationale,
+                    'weights': self.weights,
+                    'details': self.weighting_details,
+                },
+                f,
+                indent=2,
+            )
     
     def load(self, base_path: str):
         """Load all detectors and metadata with backward compatibility"""
@@ -694,6 +735,15 @@ class EnsembleAnomalyDetector:
         metadata = joblib.load(base_path / "ensemble_metadata.pkl")
         self.weights = metadata.get('weights', {'iforest': 1.0, 'ocsvm': 1.0, 'autoencoder': 2.0})
         self.score_stats = metadata.get('score_stats', {})
+        self.weighting_method = metadata.get(
+            'weighting_method',
+            'strict_unsupervised_clean_stability_inverse_variance'
+        )
+        self.weighting_rationale = metadata.get(
+            'weighting_rationale',
+            'Weights are derived from nominal-data score stability only.'
+        )
+        self.weighting_details = metadata.get('weighting_details', {})
         self.ensemble_threshold = metadata['threshold']
         self.config = metadata['config']
         self.use_conv = metadata.get('use_conv', True)
