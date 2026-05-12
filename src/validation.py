@@ -17,7 +17,7 @@ from scipy import stats
 from scipy.spatial.distance import jensenshannon
 from sklearn.metrics import (
     roc_auc_score, roc_curve, precision_recall_curve,
-    confusion_matrix, classification_report, f1_score, sensitivity_specificity_support
+    confusion_matrix, classification_report, f1_score
 )
 import torch
 import torch.nn as nn

@@ -1,17 +1,27 @@
-import sys, time, json
+import sys, time, json, argparse
 import numpy as np
 import pandas as pd
+from argparse import Namespace
 from run_pipeline import ContaminationDetectionPipeline
 
 class SmokePipeline(ContaminationDetectionPipeline):
-    def run_fused_pipeline(self, args):
-        # Force a small subset of the audit-audited data
-        parser = AmbrDatasetParser("FCIC_AMBR_05/Data")
-        ambr_df = parser.parse_sensor_files("00001/S").iloc[:150]
-        fuser = DataFuser("FCIC_AMBR_05/Data", "Bacteria Contamination Work")
-        fused_df = fuser.fuse(ambr_df, "EColi", "10CFU")
-        # Logic...
-        super().run_fused_pipeline(args)
+    """Quick smoke test for pipeline integration."""
+    pass
 
-c = ContaminationDetectionPipeline({}, 'output')
-c.run_fused_pipeline(None)
+if __name__ == "__main__":
+    # Create args object with required attributes
+    args = Namespace(
+        config="config/pipeline_config.yaml",
+        experiment="EColi_10CFU",
+        output="output"
+    )
+    
+    # Run smoke test
+    print("🔥 Starting smoke test (quick validation)...", flush=True)
+    pipeline = ContaminationDetectionPipeline({}, "output")
+    try:
+        pipeline.run_fused_pipeline(args)
+        print("✅ Smoke test PASSED", flush=True)
+    except Exception as e:
+        print(f"❌ Smoke test FAILED: {e}", flush=True)
+        sys.exit(1)

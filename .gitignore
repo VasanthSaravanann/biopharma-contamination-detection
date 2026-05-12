@@ -1,66 +1,13 @@
-# Data (too large for git)
-data/raw/
-data/processed/*.parquet
-data/synthetic/
-*.zip
-*.pegpro
-Bacteria Contamination Work/
-Bacteria Contamination Work.zip
-
-# Model checkpoints (large binaries)
-models/*.pt
-models/*.pkl
-models/*.bin
-models/*.ckpt
-
-# Output directories
-output/
-results/
-experiment_output/
-demo_output/
-explanation_output/
-figures/*.png
-experiment_output/figures/*.png
-
-# Python
+.venv/
+.env
 __pycache__/
 *.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Jupyter checkpoints
-.ipynb_checkpoints/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Logs
+data/
+data/*
+output/
+output/*
+*.tmp
 *.log
-pipeline.log
-
-# TMPDIR
-tmp/
-
-# Local config overrides
-.env
-*.local.yaml
-
-# Local large dataset / local docs
-FCIC_AMBR_05/
-*.pdf
+.ipynb_checkpoints/
+.vscode/

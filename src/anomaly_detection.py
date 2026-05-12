@@ -11,11 +11,20 @@ All models learn the distribution of clean spectra and flag deviations as anomal
 
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
-import torch.optim as optim
 import json
-from torch.utils.data import DataLoader, TensorDataset
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.utils.data import DataLoader, TensorDataset
+    HAS_TORCH = True
+except Exception:
+    # PyTorch is optional for lightweight testing environments.
+    HAS_TORCH = False
+    nn = None
+    optim = None
+    DataLoader = None
+    TensorDataset = None
 from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from sklearn.ensemble import IsolationForest
@@ -23,6 +32,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.metrics import roc_auc_score, precision_recall_curve, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPRegressor
 import joblib
 from pathlib import Path
 import warnings
@@ -258,79 +268,84 @@ class OneClassSVMDetector(AnomalyDetectionBase):
         self.is_fitted = True
 
 
-class Conv1DAutoencoder(nn.Module):
-    """
-    Convolutional 1D Autoencoder for anomaly detection.
-    
-    Learns to reconstruct nominal spectra using 1D convolutions
-    to capture spatial (wavelength) correlations.
-    """
-    
-    def __init__(self, input_dim: int, config: ModelConfig):
-        super().__init__()
+if HAS_TORCH:
+    class Conv1DAutoencoder(nn.Module):
+        """
+        Convolutional 1D Autoencoder for anomaly detection.
         
-        self.input_dim = input_dim
-        self.latent_dim = config.ae_latent_dim
-        
-        # Build encoder
-        layers = []
-        curr_dim = input_dim
-        
-        # Layer 1
-        layers.append(nn.Conv1d(1, 16, kernel_size=7, stride=2, padding=3))
-        layers.append(nn.BatchNorm1d(16))
-        layers.append(nn.ReLU())
-        curr_dim = (curr_dim + 2*3 - 7) // 2 + 1
-        
-        # Layer 2 (conditional)
-        if curr_dim > 10:
-            layers.append(nn.Conv1d(16, 32, kernel_size=5, stride=2, padding=2))
-            layers.append(nn.BatchNorm1d(32))
+        Learns to reconstruct nominal spectra using 1D convolutions
+        to capture spatial (wavelength) correlations.
+        """
+
+        def __init__(self, input_dim: int, config: ModelConfig):
+            super().__init__()
+
+            self.input_dim = input_dim
+            self.latent_dim = config.ae_latent_dim
+
+            # Build encoder
+            layers = []
+            curr_dim = input_dim
+
+            # Layer 1
+            layers.append(nn.Conv1d(1, 16, kernel_size=7, stride=2, padding=3))
+            layers.append(nn.BatchNorm1d(16))
             layers.append(nn.ReLU())
-            curr_dim = (curr_dim + 2*2 - 5) // 2 + 1
-            
-        # Layer 3 (conditional)
-        if curr_dim > 10:
-            layers.append(nn.Conv1d(32, 64, kernel_size=3, stride=2, padding=1))
-            layers.append(nn.BatchNorm1d(64))
-            layers.append(nn.ReLU())
-            curr_dim = (curr_dim + 2*1 - 3) // 2 + 1
-            
-        layers.append(nn.Flatten())
-        self.encoder_conv = nn.Sequential(*layers)
-        
-        # Dummy pass to compute dynamic flatten size
-        self.encoder_conv.eval()
-        dummy_input = torch.zeros(1, 1, input_dim)
-        with torch.no_grad():
-            flatten_size = self.encoder_conv(dummy_input).shape[1]
-        
-        self.encoder_linear = nn.Linear(flatten_size, self.latent_dim)
-        
-        # Build decoder (mirrored)
-        self.decoder_input = nn.Linear(self.latent_dim, flatten_size)
-        
-        # For simplicity in this adaptation, use a symmetric MLP-based or simple deconv
-        # But we must ensure it outputs exactly input_dim
-        # A safer approach for varying input_dim is to use a simple decoder + interpolation
-        self.decoder = nn.Sequential(
-            nn.Linear(flatten_size, 256),
-            nn.ReLU(),
-            nn.Linear(256, input_dim)
-        )
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass"""
-        x = x.view(-1, 1, self.input_dim)
-        z = self.encoder_linear(self.encoder_conv(x))
-        
-        x_recon = self.decoder(self.decoder_input(z))
-        return x_recon
-    
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """Encode to latent space"""
-        x = x.view(-1, 1, self.input_dim)
-        return self.encoder_linear(self.encoder_conv(x))
+            curr_dim = (curr_dim + 2*3 - 7) // 2 + 1
+
+            # Layer 2 (conditional)
+            if curr_dim > 10:
+                layers.append(nn.Conv1d(16, 32, kernel_size=5, stride=2, padding=2))
+                layers.append(nn.BatchNorm1d(32))
+                layers.append(nn.ReLU())
+                curr_dim = (curr_dim + 2*2 - 5) // 2 + 1
+
+            # Layer 3 (conditional)
+            if curr_dim > 10:
+                layers.append(nn.Conv1d(32, 64, kernel_size=3, stride=2, padding=1))
+                layers.append(nn.BatchNorm1d(64))
+                layers.append(nn.ReLU())
+                curr_dim = (curr_dim + 2*1 - 3) // 2 + 1
+
+            layers.append(nn.Flatten())
+            self.encoder_conv = nn.Sequential(*layers)
+
+            # Dummy pass to compute dynamic flatten size
+            self.encoder_conv.eval()
+            dummy_input = torch.zeros(1, 1, input_dim)
+            with torch.no_grad():
+                flatten_size = self.encoder_conv(dummy_input).shape[1]
+
+            self.encoder_linear = nn.Linear(flatten_size, self.latent_dim)
+
+            # Build decoder (mirrored)
+            self.decoder_input = nn.Linear(self.latent_dim, flatten_size)
+
+            # For simplicity in this adaptation, use a symmetric MLP-based or simple deconv
+            # But we must ensure it outputs exactly input_dim
+            # A safer approach for varying input_dim is to use a simple decoder + interpolation
+            self.decoder = nn.Sequential(
+                nn.Linear(flatten_size, 256),
+                nn.ReLU(),
+                nn.Linear(256, input_dim)
+            )
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Forward pass"""
+            x = x.view(-1, 1, self.input_dim)
+            z = self.encoder_linear(self.encoder_conv(x))
+
+            x_recon = self.decoder(self.decoder_input(z))
+            return x_recon
+
+        def encode(self, x: torch.Tensor) -> torch.Tensor:
+            """Encode to latent space"""
+            x = x.view(-1, 1, self.input_dim)
+            return self.encoder_linear(self.encoder_conv(x))
+else:
+    class Conv1DAutoencoder:
+        def __init__(self, input_dim: int, config: ModelConfig):
+            raise RuntimeError("Conv1DAutoencoder requires PyTorch. Install torch or use AutoencoderDetector with use_conv=False for sklearn fallback.")
 
 
 class AutoencoderDetector(AnomalyDetectionBase):
@@ -344,25 +359,33 @@ class AutoencoderDetector(AnomalyDetectionBase):
     def __init__(self, input_dim: int, config: ModelConfig,
                  use_conv: bool = True, device: Optional[str] = None):
         super().__init__(config)
-        
-        if device is None:
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        else:
-            self.device = torch.device(device)
-        
         self.input_dim = input_dim
         self.use_conv = use_conv
-        
-        if use_conv:
-            self.model = Conv1DAutoencoder(input_dim, config).to(self.device)
-        else:
-            # Fallback or keep MLP version if needed, but we prefer Conv1D now
-            # Assume Conv1D is standard for this hardened pipeline
-            self.model = Conv1DAutoencoder(input_dim, config).to(self.device)
-        
+
         self.optimizer = None
         self.scheduler = None
         self.training_history = {'train_loss': [], 'val_loss': []}
+
+        if HAS_TORCH:
+            if device is None:
+                self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            else:
+                self.device = torch.device(device)
+            if use_conv:
+                self.model = Conv1DAutoencoder(input_dim, config).to(self.device)
+            else:
+                self.model = Conv1DAutoencoder(input_dim, config).to(self.device)
+        else:
+            # Fallback: sklearn MLPRegressor-based autoencoder for environments without PyTorch
+            self.device = None
+            hidden_layer_sizes = tuple(max(10, h) for h in config.ae_hidden_layers)
+            # The MLP will map input_dim -> latent -> input_dim (approximate)
+            self.model = MLPRegressor(hidden_layer_sizes=hidden_layer_sizes,
+                                      activation='relu',
+                                      solver='adam',
+                                      batch_size=config.ae_batch_size,
+                                      learning_rate_init=config.ae_learning_rate,
+                                      max_iter=200)
     
     def _init_optimizer(self):
         """Initialize optimizer and scheduler"""
@@ -398,98 +421,115 @@ class AutoencoderDetector(AnomalyDetectionBase):
         """
         # Preprocess
         X_scaled = self.preprocess(X, fit=True)
-        
-        # Split data
-        X_train, X_val = train_test_split(
-            X_scaled, test_size=val_split, random_state=self.config.random_state
-        )
-        
-        # Create data loaders
-        train_dataset = TensorDataset(torch.FloatTensor(X_train))
-        val_dataset = TensorDataset(torch.FloatTensor(X_val))
-        
-        train_loader = DataLoader(
-            train_dataset, batch_size=self.config.ae_batch_size, shuffle=True
-        )
-        val_loader = DataLoader(
-            val_dataset, batch_size=self.config.ae_batch_size, shuffle=False
-        )
-        
-        # Initialize optimizer
-        self._init_optimizer()
-        
-        # Training loop
-        best_val_loss = float('inf')
-        patience_counter = 0
-        best_model_state = None
-        
-        for epoch in range(self.config.ae_epochs):
-            # Training
-            self.model.train()
-            train_loss = 0.0
-            
-            for batch in train_loader:
-                x = batch[0].to(self.device)
-                
-                self.optimizer.zero_grad()
-                x_recon = self.model(x)
-                loss = self._reconstruction_loss(x, x_recon)
-                loss.backward()
-                
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                
-                self.optimizer.step()
-                train_loss += loss.item() * len(x)
-            
-            train_loss /= len(X_train)
-            
-            # Validation
-            self.model.eval()
-            val_loss = 0.0
-            
-            with torch.no_grad():
-                for batch in val_loader:
+
+        # If PyTorch available, use the deep training loop
+        if HAS_TORCH:
+            # Split data
+            X_train, X_val = train_test_split(
+                X_scaled, test_size=val_split, random_state=self.config.random_state
+            )
+
+            # Create data loaders
+            train_dataset = TensorDataset(torch.FloatTensor(X_train))
+            val_dataset = TensorDataset(torch.FloatTensor(X_val))
+
+            train_loader = DataLoader(
+                train_dataset, batch_size=self.config.ae_batch_size, shuffle=True
+            )
+            val_loader = DataLoader(
+                val_dataset, batch_size=self.config.ae_batch_size, shuffle=False
+            )
+
+            # Initialize optimizer
+            self._init_optimizer()
+
+            # Training loop
+            best_val_loss = float('inf')
+            patience_counter = 0
+            best_model_state = None
+
+            for epoch in range(self.config.ae_epochs):
+                # Training
+                self.model.train()
+                train_loss = 0.0
+
+                for batch in train_loader:
                     x = batch[0].to(self.device)
+
+                    self.optimizer.zero_grad()
                     x_recon = self.model(x)
                     loss = self._reconstruction_loss(x, x_recon)
-                    val_loss += loss.item() * len(x)
-            
-            val_loss /= len(X_val)
-            
-            # Update learning rate
-            self.scheduler.step(val_loss)
-            
-            # Store history
-            self.training_history['train_loss'].append(train_loss)
-            self.training_history['val_loss'].append(val_loss)
-            
-            # Early stopping
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                patience_counter = 0
-                best_model_state = self.model.state_dict().copy()
-            else:
-                patience_counter += 1
-            
-            if verbose:
-                print(f"Epoch {epoch + 1}/{self.config.ae_epochs} - "
-                      f"Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}, "
-                      f"LR: {self.optimizer.param_groups[0]['lr']:.6f}", flush=True)
-            
-            if patience_counter >= self.config.ae_early_stopping_patience:
+                    loss.backward()
+
+                    # Gradient clipping
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+
+                    self.optimizer.step()
+                    train_loss += loss.item() * len(x)
+
+                train_loss /= len(X_train)
+
+                # Validation
+                self.model.eval()
+                val_loss = 0.0
+
+                with torch.no_grad():
+                    for batch in val_loader:
+                        x = batch[0].to(self.device)
+                        x_recon = self.model(x)
+                        loss = self._reconstruction_loss(x, x_recon)
+                        val_loss += loss.item() * len(x)
+
+                val_loss /= len(X_val)
+
+                # Update learning rate
+                self.scheduler.step(val_loss)
+
+                # Store history
+                self.training_history['train_loss'].append(train_loss)
+                self.training_history['val_loss'].append(val_loss)
+
+                # Early stopping
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    patience_counter = 0
+                    best_model_state = self.model.state_dict().copy()
+                else:
+                    patience_counter += 1
+
                 if verbose:
-                    print(f"Early stopping at epoch {epoch + 1}")
-                break
-        
-        # Load best model
-        if best_model_state is not None:
-            self.model.load_state_dict(best_model_state)
-        
-        self.is_fitted = True
-        self.set_threshold(X_scaled)
-        
-        return self
+                    print(f"Epoch {epoch + 1}/{self.config.ae_epochs} - "
+                          f"Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}, "
+                          f"LR: {self.optimizer.param_groups[0]['lr']:.6f}", flush=True)
+
+                if patience_counter >= self.config.ae_early_stopping_patience:
+                    if verbose:
+                        print(f"Early stopping at epoch {epoch + 1}")
+                    break
+
+            # Load best model
+            if best_model_state is not None:
+                self.model.load_state_dict(best_model_state)
+
+            self.is_fitted = True
+            self.set_threshold(X_scaled)
+
+            return self
+
+        # Fallback for sklearn-based autoencoder
+        # Train MLPRegressor to reconstruct input
+        if not HAS_TORCH:
+            # Fit MLP autoencoder: X -> X
+            # Flatten and fit
+            self.model.max_iter = max(200, self.config.ae_epochs)
+            self.model.fit(X_scaled, X_scaled)
+            # Store simple training history
+            self.training_history['train_loss'].append(0.0)
+            self.training_history['val_loss'].append(0.0)
+
+            self.is_fitted = True
+            self.set_threshold(X_scaled)
+            return self
     
     def predict(self, X: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
         """Predict anomaly labels"""
@@ -512,18 +552,21 @@ class AutoencoderDetector(AnomalyDetectionBase):
         """
         if not self.is_fitted:
             raise RuntimeError("Model not fitted")
-        
+
         X_scaled = self.preprocess(X)
-        self.model.eval()
-        
-        with torch.no_grad():
-            x = torch.FloatTensor(X_scaled).to(self.device)
-            x_recon = self.model(x)
-            
-            # Per-sample reconstruction error (MSE)
-            errors = torch.mean((x - x_recon) ** 2, dim=1)
-        
-        return errors.cpu().numpy()
+        # PyTorch path
+        if HAS_TORCH:
+            self.model.eval()
+            with torch.no_grad():
+                x = torch.FloatTensor(X_scaled).to(self.device)
+                x_recon = self.model(x)
+                errors = torch.mean((x - x_recon) ** 2, dim=1)
+            return errors.cpu().numpy()
+
+        # sklearn fallback: predict and compute MSE per sample
+        X_recon = self.model.predict(X_scaled)
+        errors = np.mean((X_scaled - X_recon) ** 2, axis=1)
+        return errors
     
     def save(self, path: str):
         """Save model"""
