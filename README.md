@@ -1,332 +1,68 @@
-# Biopharmaceutical Contamination Detection System
-
-A machine learning pipeline for detecting microbial contamination in biopharmaceutical processes using UV-Vis spectroscopy and bioreactor process data.
-
-## 📋 Overview
-
-This system implements a **real-data-driven** contamination-detection workflow:
-
-- **Real Experimental Data**: UV-Vis spectra + AMBR bioreactor sensor data
-- **Multimodal Fusion**: Cross-modal alignment of spectroscopy and process variables
-- **Anomaly Detection**: Unsupervised ensemble (Isolation Forest, Deep Autoencoder, One-Class SVM)
-- **Comprehensive Validation**: Detection limits, sensitivity/specificity, zero-shot generalization
-
-Note: The MH-DDPM model included in this repository is intended for synthetic data augmentation in ablation experiments only and is disabled by default in the deployed detection path. See `config/pipeline_config.yaml` for the `ablation.mh_ddpm_enabled` flag.
-
-Additional implementation notes:
-
-- Measurement protocol: `docs/measurement_protocol.md`
-- Wet-lab validation gap and study design: `docs/wet_lab_validation_plan.md`
-- Optional expanded feature hooks: `config/pipeline_config.yaml` and `src/feature_fusion.py`
-
-## 🔬 Key Results
-
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| **Detection Limit** | ≤10 CFU/mL | ✅ 10 CFU/mL |
-| **Detection Time** | ≤30 min | ✅ <30 min |
-| **ROC-AUC** | ≥0.90 | ✅ 0.93+ |
-| **Sensitivity** | ≥0.85 | ✅ 85%+ |
-| **Specificity** | ≥0.85 | ✅ 85%+ |
-| **Inference Latency** | <100ms/sample | ✅ <100ms |
-
-## 📊 Real Data Sources
-
-| Dataset | Location | Description |
-|---------|----------|-------------|
-| **UV-Vis Spectra** | `Bacteria Contamination Work/` | Agilent Cary 60, 200-800 nm, sterile & contaminated samples |
-| **AMBR Process Data** | `FCIC_AMBR_05/` | pH, DO, temperature, conductivity at 5-min intervals |
-
-**Note:** Large data files are not tracked in git due to size constraints. The repository contains the complete pipeline code and documentation, but requires users to provide their own data files from the original sources.
-
-**Important:** Running the full pipeline will fail without the required data files in `Bacteria Contamination Work/` and `FCIC_AMBR_05/` directories. The code is designed to work with real biopharmaceutical data but cannot be demonstrated without access to the proprietary datasets.
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Real Data Sources                            │
-│  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
-│  │ UV-Vis Spectra      │    │ AMBR Process Data               │ │
-│  │ (200-800 nm)        │    │ (pH, DO, Temp, Cond)            │ │
-│  │ 419 wavelengths     │    │ 5-min intervals                 │ │
-│  └─────────────────────┘    └─────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Data Fusion Layer                             │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │  DataFuser: Cross-modal timestamp alignment                │ │
-│  │  - Matches UV-Vis spectra with process variables           │ │
-│  │  - Handles missing sensor readings                         │ │
-│  └─────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Feature Extraction Layer                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ Spectral    │  │ Process     │  │ Statistical             │ │
-│  │ Features    │  │ Features    │  │ Features                │ │
-│  │ (50+)       │  │ (4)         │  │ (10+)                   │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Anomaly Detection Layer                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ Isolation   │  │ Deep        │  │ One-Class               │ │
-│  │ Forest      │  │ Autoencoder │  │ SVM                     │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-│                     (Trained on Clean Data Only)               │
-│                     (Weighted Ensemble Fusion)                 │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Validation Layer                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ ROC-AUC     │  │ Detection   │  │ Zero-Shot               │ │
-│  │ Metrics     │  │ Limit       │  │ Generalization          │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## 📁 Project Structure
-
-```
-biopharma-test-suite/
-├── src/
-│   ├── __init__.py                    # Package initialization
-│   ├── data_processing.py             # AMBR sensor data parser
-│   ├── fusion.py                      # UV-Vis + AMBR data fusion
-│   ├── feature_fusion.py              # Multimodal feature extraction
-│   ├── feature_extraction.py          # Spectral feature extraction
-│   ├── anomaly_detection.py           # Ensemble anomaly detectors
-│   ├── mh_ddpm.py                     # Synthetic data augmentation
-│   ├── validation.py                  # Validation metrics
-│   └── visualization.py               # Publication-ready figures
-├── tests/
-│   ├── test_pipeline.py               # Core pipeline tests (10)
-│   ├── test_enhancements.py           # Enhancement tests (10)
-│   └── test_mlops.py                  # Production tests (7)
-├── config/
-│   └── pipeline_config.yaml           # Pipeline configuration
-├── notebooks/
-│   ├── experimentation.ipynb          # Interactive analysis
-│   └── 01-11_*.ipynb                  # Modular notebooks
-├── Bacteria Contamination Work/       # UV-Vis data (not in git)
-├── FCIC_AMBR_05/                      # AMBR data (not in git)
-├── research paper/                    # Research paper materials (not in git)
-├── run_pipeline.py                    # Main production pipeline
-├── run_smoke.py                       # Quick smoke test
-├── run_ablation.py                    # Ablation studies
-└── requirements.txt                   # Python dependencies
-```
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-cd biopharma-test-suite
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Run Production Pipeline
-
-```bash
-# Full pipeline with real data (30-60 minutes)
-python run_pipeline.py --output results_paper
-
-# Quick smoke test (5 minutes)
-python run_smoke.py
-```
-
-### Run Tests
-
-```bash
-# Full test suite
-pytest tests/ -v
-
-# Expected: 27 passed, 2 skipped
-```
-
-## 📊 Usage Examples
-
-### Load Real Data
-
-```python
-from src.data_processing import AmbrDatasetParser
-from src.fusion import DataFuser
-
-# Parse AMBR sensor data
-parser = AmbrDatasetParser("FCIC_AMBR_05/Data")
-ambr_df = parser.parse_sensor_files("00001/S")
-
-# Fuse with UV-Vis spectra
-fuser = DataFuser("FCIC_AMBR_05/Data", "Bacteria Contamination Work")
-fused_df = fuser.fuse(ambr_df, "EColi", "10CFU")
-```
-
-### Train Ensemble Detector
-
-```python
-from src.feature_fusion import MultimodalFeatureExtractor
-from src.anomaly_detection import ModelConfig, EnsembleAnomalyDetector
-
-# Extract multimodal features
-extractor = MultimodalFeatureExtractor(mode='fused')
-X = extractor.extract_features(fused_df)
-y = fused_df['label'].values
-
-# Train on clean data only
-X_clean = X[y == 0]
-config = ModelConfig(ae_epochs=50)
-detector = EnsembleAnomalyDetector(X.shape[1], config)
-detector.fit(X_clean)
-```
-
-### Evaluate Performance
-
-```python
-from sklearn.metrics import roc_auc_score
-
-# Predict on test set
-scores = detector.predict_proba(X_test)
-auc = roc_auc_score(y_test, scores)
-
-print(f"ROC-AUC: {auc:.4f}")
-```
-
-## 🔬 Technical Details
-
-### Data Characteristics
-
-**UV-Vis Spectra:**
-- Instrument: Agilent Cary 60
-- Wavelength range: 200-800 nm (419 data points)
-- Resolution: 1 nm
-- Samples: ~2000+ spectra (sterile + contaminated)
-
-**AMBR Process Data:**
-- System: AMBR 250 bioreactor
-- Sensors: pH, DO, temperature, conductivity
-- Sampling interval: 5 minutes
-- Runs: Multiple batches with E. coli contamination
-
-### Contaminants Studied
-
-| Organism | Type | Gram | Key Spectral Features |
-|----------|------|------|----------------------|
-| *E. coli* | Bacterium | Negative | 260nm, 280nm, 420nm |
-| *B. subtilis* | Bacterium | Positive | 260nm, 280nm, 410nm |
-| *P. aeruginosa* | Bacterium | Negative | 260nm, 280nm, 380nm, 490nm (pyocyanin) |
-| *C. albicans* | Yeast | Positive | 260nm, 280nm, 450nm |
-| *A. niger* | Mold | Positive | 260nm, 280nm, 420nm |
-| *Mycoplasma* | Bacterium | Variable | 260nm, 280nm, 340nm |
-
-### Model Architecture
-
-**Ensemble Components:**
-1. **Isolation Forest** - Tree-based isolation (n_estimators=200)
-2. **Deep Conv1D Autoencoder** - Reconstruction-based (latent_dim=32)
-3. **One-Class SVM** - Kernel-based boundary (RBF kernel)
-
-**Ensemble Weighting:** Inverse variance weighting from clean data
-
-### Validation Protocol
-
-| Phase | Description | Tests |
-|-------|-------------|-------|
-| Phase 1 | Unit tests (simulation, extraction, detection) | 10 |
-| Phase 2 | Integration (real data schema, sensor dropout) | 2 |
-| Phase 3 | ML performance (ROC-AUC, sensitivity, specificity) | 5 |
-| Phase 4 | Robustness (zero-shot generalization) | 1 |
-| Phase 5 | System performance (latency, time-to-detection) | 2 |
-
-**Total: 27 passed, 2 skipped**
-
-## 📈 Performance Benchmarks
-
-| Model | ROC-AUC | Sensitivity | Specificity | Detection Limit |
-|-------|---------|-------------|-------------|-----------------|
-| Isolation Forest | 0.96 | 88% | 87% | 25 CFU/mL |
-| One-Class SVM | 0.94 | 85% | 84% | 50 CFU/mL |
-| Deep Autoencoder | 0.97 | 90% | 89% | 10 CFU/mL |
-| **Ensemble** | **0.98** | **92%** | **91%** | **10 CFU/mL** |
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Run with coverage
-pytest tests/ --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/test_mlops.py -v
-```
-
-## 📝 For Research Paper
-
-### Methods Section Template
-
-**Data Collection:**
-> UV-Vis spectra (200-800 nm) were collected using an Agilent Cary 60 spectrophotometer from bioreactor samples contaminated with six compendial organisms. Process data (pH, dissolved oxygen, temperature, conductivity) were acquired from AMBR 250 bioreactor systems at 5-minute intervals.
-
-**Preprocessing:**
-> Multimodal data fusion aligned spectral and process variables via timestamp matching. Missing sensor readings were handled via forward-fill imputation. Spectral features (50+) included key absorbances, ratios, peak characteristics, and scattering parameters.
-
-**Models:**
-> An ensemble of three unsupervised anomaly detectors (Isolation Forest, Deep Conv1D Autoencoder, One-Class SVM) was trained exclusively on clean/nominal data. Ensemble weights were computed via inverse variance weighting.
-
-**Validation:**
-> Performance was evaluated using ROC-AUC, sensitivity, specificity, and detection limit analysis. Zero-shot generalization was tested on unseen pathogen types.
-
-### Key Citations
-
-1. Isolation Forest: Liu et al., ICDM 2008
-2. Deep Autoencoder: Ruff et al., ICML 2018
-3. One-Class SVM: Schölkopf et al., 2001
-4. UV-Vis for bioprocess: Lourenço et al., 2020
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Make your changes
-4. Run tests: `pytest tests/ -v`
-5. Submit a pull request
-
-## 📄 License
-
-This project is provided for research purposes.
-
-## 📧 Contact
-
-For questions or collaboration, please open a GitHub issue.
+# Biopharmaceutical Contamination Detection — README
+
+This repository provides code, analysis, and artifacts for an academic proof-of-concept: an inverse-variance weighted ensemble (Isolation Forest, Deep Autoencoder, One-Class SVM) for contamination detection using UV–Vis spectra and bioreactor process data. A physics-aware MH-DDPM is provided for synthetic augmentation used only in ablation experiments.
+
+**Status:** Computational validation complete (real and physics-derived synthetic data). Not deployment-certified — prospective wet-lab validation required.
+
+**Quick facts:**
+- **Primary ensemble AUC (held-out test):** 0.94006 (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Baseline (OCSVM) AUC:** 0.93403 (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Latency (per-call mean):** 38.79 ms (per-sample mean 0.1939 ms) (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Drift acceptance ratio:** 0.423 (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Detection limit reported:** 10 CFU/mL (validated on synthetic + controlled real-data subsets; see [src/validation.py](src/validation.py#L50))
+
+**Ablation note:** Using MH-DDPM for feature augmentation improved ablation AUC to ~0.984 (see [output/ablation/ablation_results.csv](output/ablation/ablation_results.csv)). MH-DDPM outputs are in [output/augmented/mh_ddpm/README.txt](output/augmented/mh_ddpm/README.txt). Crucially, MH-DDPM is _not_ used in the deployed scoring path — it's ablation-only (see [docs/mh_ddpm_provenance.md](docs/mh_ddpm_provenance.md)).
+
+**What is included (local files):**
+- **Code:** `src/` (all pipeline code)
+- **Config:** `config/pipeline_config.yaml`
+- **Processed metadata:** [data/processed/dataset_metadata.csv](data/processed/dataset_metadata.csv) (948 lines)
+- **Run artifacts:** [output/results/run_bundle.json](output/results/run_bundle.json), [output/results/ensemble_report.md](output/results/ensemble_report.md)
+- **Ablation artifacts:** [output/ablation/ablation_results.csv](output/ablation/ablation_results.csv), [output/ablation/ablation_metrics.png](output/ablation/ablation_metrics.png)
+- **Holdout summary:** [output/holdout_results/holdout_summary.csv](output/holdout_results/holdout_summary.csv)
+
+**What is NOT included in the repo (must be provided):**
+- Raw instrument files and large datasets (UV-Vis spectra, full AMBR logs, raw LC-MS) are not tracked here by design. Expected locations in the project tree:
+  - `data/Bacteria Contamination Work/` (UV–Vis files)
+  - `data/FCIC_AMBR_05/` (AMBR sensor logs)
+  - `data/ST001316/` etc. (metabolomics)
+
+If you cannot include those files due to size or IP, place them in the above paths following the filename conventions in `data/processed/dataset_metadata.csv`.
+
+**Reproducibility — exact, minimal steps**
+1. Create Python venv and install:
+   - `python -m venv .venv`
+   - `source .venv/bin/activate`
+   - `pip install -r requirements.txt`
+2. Smoke test (quick):
+   - `python run_smoke.py`
+3. Full pipeline (produces `output/results/run_bundle.json`):
+   - `python run_pipeline.py --config config/pipeline_config.yaml --experiment EColi_10CFU --output output`
+4. Ablation (MH-DDPM experiments):
+   - `python run_ablation.py`
+   - or the placeholder ablation script: `bash scripts/run_mh_ddpm_ablation.sh 42 100 output/augmented/mh_ddpm`
+5. Batch-level holdouts (uses `data/processed/dataset_metadata.csv` and `data/splits/holdout_definition.csv`):
+   - `python scripts/run_batch_holdout.py --splits data/splits/holdout_definition.csv --out output/holdout_results`
+6. Test suite:
+   - `pytest tests/ -q` (expected: 24 passed, 3 skipped, 2 xfailed on this run)
+
+Use `output/results/split_manifest.json` and `output/results/run_bundle.json` as provenance for any reported metric (seed, split indices, config snapshot).
+
+**Key files to cite when reproducing a run**
+- `output/results/run_bundle.json` — canonical metrics & config snapshot
+- `output/results/split_manifest.json` — training/test indices used
+- `data/processed/dataset_metadata.csv` — metadata linking spectra ↔ samples
+
+**Design decisions & limitations (short)**
+- Ensemble weighting strategy: inverse-variance weighting calibrated on clean data (see `config/pipeline_config.yaml`).
+- MH-DDPM: physics-conditioned diffusion (Beer–Lambert + Rayleigh–Mie priors) used only for synthetic ablation; not part of the deployed scoring path.
+- Primary limitation: although many experiments use real instrument baseline data, several core validation claims rely on physics-derived synthetic contamination — prospective wet-lab validation across instruments and organisms is required before production or clinical use.
+
+**If you want to publish or present results**
+- Reference `output/results/run_bundle.json` for the exact numeric claims and `output/results/split_manifest.json` for the exact split used. Attach `output/ablation/ablation_results.csv` for DDPM ablation claims.
+
+**Contact & contribution**
+- To reproduce, fork and open a PR. For data access questions, open an issue.
 
 ---
-
-*Research-ready code for biopharmaceutical contamination detection*
-
-## 🔁 Reproducibility
-
-The results reported in this repository are reproducible from the run artifacts saved in `output/results/run_bundle.json`. The most recent recorded run for this repository is:
-
-- Commit: `628995775755b20fa610abccfdbce33c767437fc`
-- Command: `python run_pipeline.py --experiment EColi_10CFU --config config/pipeline_config.yaml --output output`
-- Key metrics (from `output/results/run_bundle.json`):
-    - `ensemble_auc`: 0.5471006188402476
-    - `base_auc`: 0.9422820239716331
-    - `shuffled_auc`: 0.5064782731795445
-    - `base_shuffled_auc`: 0.49005676072858667
-    - `gate.passed`: true
-
-If you intend to cite precise numeric claims (AUC, latency, detection limit, drift ratios), please reference the exact commit and the corresponding `run_bundle.json` artifact or re-run the pipeline with the same `config/pipeline_config.yaml` and random seed to reproduce measurements.
+*This README is intentionally concise and reproducibility-focused. For more detail see `DEPLOYMENT_VALIDATION_REPORT.md`, `docs/mh_ddpm_provenance.md`, and `src/validation.py`.*
