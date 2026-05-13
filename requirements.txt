@@ -9,8 +9,9 @@ pandas>=2.0.0
 
 # Machine Learning
 scikit-learn>=1.3.0
-torch>=2.0.0
-torchvision>=0.15.0
+# Pinned PyTorch for reproducible CI and compatibility
+torch==2.2.0
+torchvision==0.15.2
 
 # Deep Learning for DDPM
 einops>=0.6.0

@@ -25,6 +25,23 @@ except Exception:
     optim = None
     DataLoader = None
     TensorDataset = None
+
+# Compatibility fallbacks if a partial/older torch is installed (safe no-op when correct torch present)
+if HAS_TORCH:
+    # Ensure nn.Flatten exists
+    if not hasattr(nn, 'Flatten'):
+        class _Flatten(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return x.view(x.size(0), -1)
+        nn.Flatten = _Flatten
+
+    # Ensure torch.zeros exists (some minimal builds may miss helpers)
+    if not hasattr(torch, 'zeros'):
+        import numpy as _np
+        def _torch_zeros(*shape, dtype=None, device=None):
+            arr = _np.zeros(shape, dtype=_np.float32)
+            return torch.tensor(arr)
+        setattr(torch, 'zeros', _torch_zeros)
 from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from sklearn.ensemble import IsolationForest

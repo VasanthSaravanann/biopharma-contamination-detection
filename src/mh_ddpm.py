@@ -25,6 +25,20 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+# Compatibility fallbacks: ensure torch helpers exist when partial builds are present
+if not hasattr(torch, 'zeros'):
+    import numpy as _np
+    def _torch_zeros(*shape, dtype=None, device=None):
+        arr = _np.zeros(shape, dtype=_np.float32)
+        return torch.tensor(arr)
+    setattr(torch, 'zeros', _torch_zeros)
+
+if not hasattr(nn, 'Flatten'):
+    class _Flatten(nn.Module):
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return x.view(x.size(0), -1)
+    nn.Flatten = _Flatten
+
 
 @dataclass
 class DDPMConfig:
