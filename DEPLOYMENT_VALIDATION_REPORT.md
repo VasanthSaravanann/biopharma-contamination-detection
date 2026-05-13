@@ -9,7 +9,9 @@
 
 ## 1. Executive Summary
 
-This report documents the full computational validation of the contamination detection ensemble against **real biopharmaceutical data**. The system targets early detection of microbial contamination in bioreactor processes at a limit of 10 CFU/mL within 30 minutes, using UV-Vis spectroscopy and AMBR sensor data.
+This report documents the full computational validation of the contamination detection ensemble against **real biopharmaceutical data** and physics-derived synthetic augmentations. The system targets early detection of microbial contamination in bioreactor processes at a limit of 10 CFU/mL within 30 minutes, using UV-Vis spectroscopy and AMBR sensor data.
+
+**Important scope note:** All reported validations are computational and/or based on curated instrument datasets. Prospective wet-lab experimental validation across independent fermentation runs, instruments, and organisms is required before industrial deployment or clinical use.
 
 ### Headline Results
 - **Ensemble ROC-AUC:** 0.9401 ✅ (target: ≥0.94)

@@ -22,6 +22,49 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
+def load_co2_timeseries_csv(path: str) -> pd.DataFrame:
+    """Load CO2 off-gas timeseries CSV and return per-sample aggregated features.
+
+    Expected columns: sample_id, timestamp, co2_pct
+    Returns DataFrame indexed by sample_id with aggregated columns:
+    - co2_mean, co2_std, co2_p95, co2_p05
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"CO2 file not found: {path}")
+    df = pd.read_csv(p)
+    if 'sample_id' not in df.columns or 'co2_pct' not in df.columns:
+        raise ValueError('CO2 CSV must contain sample_id and co2_pct columns')
+
+    agg = df.groupby('sample_id')['co2_pct'].agg([
+        ('co2_mean', 'mean'),
+        ('co2_std', 'std'),
+        ('co2_p95', lambda x: np.percentile(x, 95)),
+        ('co2_p05', lambda x: np.percentile(x, 5)),
+    ])
+    return agg.reset_index().set_index('sample_id')
+
+
+def load_metabolomics_aggregated_csv(path: str) -> pd.DataFrame:
+    """Load aggregated metabolomics CSV (per-sample) and return normalized features.
+
+    Expected columns: sample_id, metabolite_XXX (many columns)
+    Returns DataFrame indexed by sample_id with z-scored metabolite intensities.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Metabolomics file not found: {path}")
+    df = pd.read_csv(p)
+    if 'sample_id' not in df.columns:
+        raise ValueError('Metabolomics CSV missing sample_id column')
+
+    meta = df.set_index('sample_id')
+    # Simple z-score normalization per metabolite
+    meta = meta.apply(lambda col: (col - col.mean()) / (col.std() + 1e-9), axis=0)
+    return meta
+
+
+
 class CECDataParser:
     """Parse CEC_04_2L fermentation bioreactor data (Sartorius A5/A6)"""
     

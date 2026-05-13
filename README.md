@@ -4,6 +4,8 @@ This repository provides code, analysis, and artifacts for an academic proof-of-
 
 **Status:** Computational validation complete (real and physics-derived synthetic data). Not deployment-certified — prospective wet-lab validation required.
 
+**Scope note:** The results in this repository derive from computational analyses on curated instrument datasets and physics-derived synthetic augmentations. Wet-lab experiments across multiple organisms and instruments are required for deployment qualification.
+
 **Quick facts:**
 - **Primary ensemble AUC (held-out test):** 0.94006 (see [output/results/run_bundle.json](output/results/run_bundle.json))
 - **Baseline (OCSVM) AUC:** 0.93403 (see [output/results/run_bundle.json](output/results/run_bundle.json))
