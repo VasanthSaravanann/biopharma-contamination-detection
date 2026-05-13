@@ -600,7 +600,7 @@ class AutoencoderDetector(AnomalyDetectionBase):
     
     def load(self, path: str):
         """Load model"""
-        model_data = torch.load(path, map_location=self.device)
+        model_data = torch.load(path, map_location=self.device, weights_only=False)
         
         self.input_dim = model_data['input_dim']
         self.config = model_data['config']
