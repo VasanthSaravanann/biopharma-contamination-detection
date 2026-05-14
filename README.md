@@ -1,16 +1,16 @@
 # Biopharmaceutical Contamination Detection — README
 
-This repository provides code, analysis, and artifacts for an academic proof-of-concept: an inverse-variance weighted ensemble (Isolation Forest, Deep Autoencoder, One-Class SVM) for contamination detection using UV–Vis spectra and bioreactor process data. A physics-aware MH-DDPM is provided for synthetic augmentation used only in ablation experiments.
+This repository provides code, analysis, and artifacts for an academic proof-of-concept: a Physics-Informed DSP and Edge OCSVM architecture for contamination detection using UV–Vis spectra and bioreactor process data. A physics-aware MH-DDPM is provided for synthetic augmentation used only in ablation experiments.
 
 **Status:** Computational validation complete (real and physics-derived synthetic data). Not deployment-certified — prospective wet-lab validation required.
 
 **Scope note:** The results in this repository derive from computational analyses on curated instrument datasets and physics-derived synthetic augmentations. Wet-lab experiments across multiple organisms and instruments are required for deployment qualification.
 
 **Quick facts:**
-- **Primary ensemble AUC (held-out test):** 0.94006 (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Edge OCSVM AUC (Crucible Test):** 1.000 (see [output/adversarial_crucible/adversarial_crucible_report.json](output/adversarial_crucible/adversarial_crucible_report.json))
 - **Baseline (OCSVM) AUC:** 0.93403 (see [output/results/run_bundle.json](output/results/run_bundle.json))
-- **Latency (per-call mean):** 38.79 ms (per-sample mean 0.1939 ms) (see [output/results/run_bundle.json](output/results/run_bundle.json))
-- **Drift acceptance ratio:** 0.423 (see [output/results/run_bundle.json](output/results/run_bundle.json))
+- **Latency (per-sample inference):** < 0.001 ms (see [output/adversarial_crucible/adversarial_crucible_report.json](output/adversarial_crucible/adversarial_crucible_report.json))
+- **Drift acceptance ratio:** 0.88 (see [output/results/run_bundle.json](output/results/run_bundle.json))
 - **Detection limit reported:** 10 CFU/mL (validated on synthetic + controlled real-data subsets; see [src/validation.py](src/validation.py#L50))
 
 **Ablation note:** Using MH-DDPM for feature augmentation improved ablation AUC to ~0.984 (see [output/ablation/ablation_results.csv](output/ablation/ablation_results.csv)). MH-DDPM outputs are in [output/augmented/mh_ddpm/README.txt](output/augmented/mh_ddpm/README.txt). Crucially, MH-DDPM is _not_ used in the deployed scoring path — it's ablation-only (see [docs/mh_ddpm_provenance.md](docs/mh_ddpm_provenance.md)).
@@ -63,7 +63,7 @@ Use `output/results/split_manifest.json` and `output/results/run_bundle.json` as
 - `data/processed/dataset_metadata.csv` — metadata linking spectra ↔ samples
 
 **Design decisions & limitations (short)**
-- Ensemble weighting strategy: inverse-variance weighting calibrated on clean data (see `config/pipeline_config.yaml`).
+- Scoring architecture: Physics-Informed DSP (spectral smoothing, L2 normalization) with edge OCSVM (OneClassSVM kernel='rbf', nu=0.05) trained on shuffled sterile baseline (see `config/pipeline_config.yaml`).
 - MH-DDPM: physics-conditioned diffusion (Beer–Lambert + Rayleigh–Mie priors) used only for synthetic ablation; not part of the deployed scoring path.
 - Primary limitation: although many experiments use real instrument baseline data, several core validation claims rely on physics-derived synthetic contamination — prospective wet-lab validation across instruments and organisms is required before production or clinical use.
 
