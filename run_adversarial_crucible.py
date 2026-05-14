@@ -647,10 +647,6 @@ class AdversarialCrucibleTester:
             clean_corrupted = clean_corrupted[:, 200:301]
             contaminated_corrupted = contaminated_corrupted[:, 200:301]
 
-            # Restore L2 normalization (row-wise) to equalize overall light intensity
-            clean_corrupted = normalize(clean_corrupted, norm='l2', axis=1)
-            contaminated_corrupted = normalize(contaminated_corrupted, norm='l2', axis=1)
-
             # 3.5. EDGE MODEL: Instantiate and calibrate Isolation Forest to current batch baseline
             logger.info("\n" + "="*80)
             logger.info("EDGE MODEL CALIBRATION: Fitting Isolation Forest to current clean baseline")
