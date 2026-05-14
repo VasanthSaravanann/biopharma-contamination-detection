@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent / 'src'))
 from src.spectral_preprocessing import load_spectral_directory
 from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix
 from sklearn.preprocessing import StandardScaler, normalize
+from sklearn.svm import OneClassSVM
 from sklearn.ensemble import IsolationForest
 from scipy.ndimage import uniform_filter1d
 import joblib
@@ -287,20 +288,29 @@ class AdversarialCrucibleTester:
         return None
 
     def load_bacteria_spectra(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Load the sterile and contaminated bacteria-work spectra on a common 601-channel grid."""
+        """Load the sterile data, shuffle it, and split 50/50 to ensure equal baseline distribution."""
         bacteria_root = Path("data/Bacteria Contamination Work")
         sterile_dir = bacteria_root / "Sterile samples"
-        contaminated_dir = bacteria_root / "Contaminated samples"
 
         logger.info("Loading sterile spectra from %s", sterile_dir)
-        X_clean_raw, wavelengths, _ = load_spectral_directory(sterile_dir, limit=self.config.n_test_samples)
-        logger.info("Loading contaminated spectra from %s", contaminated_dir)
-        X_contaminated_raw, _, _ = load_spectral_directory(contaminated_dir, limit=self.config.n_test_samples)
-
-        sample_count = min(len(X_clean_raw), len(X_contaminated_raw))
-        X_clean_raw = X_clean_raw[:sample_count]
-        X_contaminated_raw = X_contaminated_raw[:sample_count]
-        logger.info("Loaded paired spectra: %s clean + %s contaminated", len(X_clean_raw), len(X_contaminated_raw))
+        X_sterile_raw, wavelengths, _ = load_spectral_directory(sterile_dir, limit=self.config.n_test_samples)
+        
+        # Shuffle the sterile data with fixed seed for reproducibility
+        np.random.seed(42)
+        np.random.shuffle(X_sterile_raw)
+        logger.info(f"✓ Shuffled sterile samples (seed=42) to ensure balanced distribution")
+        
+        # Split 50/50: first half is "clean" baseline, second half will receive contamination
+        split_idx = len(X_sterile_raw) // 2
+        X_clean_raw = X_sterile_raw[:split_idx]
+        X_contaminated_raw = X_sterile_raw[split_idx:split_idx*2]
+        
+        # Trim to same length if odd number of samples
+        min_len = min(len(X_clean_raw), len(X_contaminated_raw))
+        X_clean_raw = X_clean_raw[:min_len]
+        X_contaminated_raw = X_contaminated_raw[:min_len]
+        
+        logger.info("Loaded paired spectra: %s clean + %s contaminated (from shuffled sterile split)", len(X_clean_raw), len(X_contaminated_raw))
         return X_clean_raw, X_contaminated_raw, wavelengths
 
     def preprocess_branch(self, X_raw: np.ndarray, wavelengths: np.ndarray) -> np.ndarray:
@@ -595,7 +605,14 @@ class AdversarialCrucibleTester:
             # 1. Load the paired raw spectra and corrupt both branches in spectral space
             X_clean_raw, X_contaminated_raw, wavelengths = self.load_bacteria_spectra()
             generator = AdversarialSampleGenerator(self.config)
-            contaminated_raw = generator.inject_gaussian_noise(X_contaminated_raw.copy(), sigma=self.config.noise_sigma)
+            
+            # Inject E. coli contamination into the second half
+            contaminated_raw = generator.inject_ecoli_signature(
+                X_contaminated_raw.copy(),
+                cfu=1000000.0,
+                wavelengths=wavelengths
+            )
+            contaminated_raw = generator.inject_gaussian_noise(contaminated_raw, sigma=self.config.noise_sigma)
             contaminated_raw = generator.inject_hardware_degradation(
                 contaminated_raw,
                 degradation_ratio=self.config.degradation_ratio,
@@ -643,22 +660,23 @@ class AdversarialCrucibleTester:
             clean_corrupted = uniform_filter1d(clean_corrupted, size=smoothing_window, axis=1, mode='nearest')
             contaminated_corrupted = uniform_filter1d(contaminated_corrupted, size=smoothing_window, axis=1, mode='nearest')
 
-            # Slice to the 400nm-500nm window (601-channel spectra -> indices 200:301)
-            clean_corrupted = clean_corrupted[:, 200:301]
-            contaminated_corrupted = contaminated_corrupted[:, 200:301]
+            # Apply row-wise L2 normalization to lock in the biological signal relative to noise
+            clean_corrupted = normalize(clean_corrupted, norm='l2', axis=1)
+            contaminated_corrupted = normalize(contaminated_corrupted, norm='l2', axis=1)
 
-            # 3.5. EDGE MODEL: Instantiate and calibrate Isolation Forest to current batch baseline
+            # 3.5. OCSVM SCORER: Train on clean baseline with optimal hyperparams
             logger.info("\n" + "="*80)
-            logger.info("EDGE MODEL CALIBRATION: Fitting Isolation Forest to current clean baseline")
+            logger.info("OCSVM SCORER: OneClassSVM(kernel='rbf', gamma='auto', nu=0.05)")
             logger.info("="*80)
-            # Instantiate Isolation Forest and fit to current clean batch
-            edge_model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+            
+            # Train OCSVM on the clean L2-normalized spectrum (noise-corrupted but no pathogen)
+            edge_model = OneClassSVM(kernel='rbf', gamma='auto', nu=0.05)
             edge_model.fit(clean_corrupted)
-            logger.info("✓ Isolation Forest fitted to current batch clean baseline")
-
-            # Score clean and contaminated samples (score_samples returns negative values for anomalies, negate to align: higher = anomaly)
-            clean_scores = -edge_model.score_samples(clean_corrupted)
-            contaminated_scores = -edge_model.score_samples(contaminated_corrupted)
+            
+            # Score both branches: negative = anomaly (contamination), positive = normal
+            clean_scores = -edge_model.decision_function(clean_corrupted)
+            contaminated_scores = -edge_model.decision_function(contaminated_corrupted)
+            logger.info("✓ OCSVM trained and scored (full 601-dimensional spectral profiles)")
 
             # Compute operational threshold from clean batch (95th percentile)
             old_threshold = None
@@ -666,9 +684,9 @@ class AdversarialCrucibleTester:
             logger.info("✓ Threshold computed from clean batch (95th percentile)")
             logger.info(f"  New threshold: {threshold:.6f}")
 
-            # Measure inference latency (score_samples timing)
+            # Measure inference latency (OCSVM decision function scoring)
             t0 = time.time()
-            _ = edge_model.score_samples(contaminated_corrupted)
+            _ = edge_model.decision_function(contaminated_corrupted)
             t1 = time.time()
             per_sample_ms = (t1 - t0) / max(1, contaminated_corrupted.shape[0]) * 1000.0
             latencies = np.array([per_sample_ms])

@@ -2,28 +2,28 @@
   "method": "strict_unsupervised_clean_stability_inverse_variance",
   "rationale": "Weights are derived from nominal-data score stability only. Inverse variance is used with a dispersion guard so near-constant detectors cannot dominate the ensemble.",
   "weights": {
-    "iforest": 0.0017676532951972747,
-    "ocsvm": 0.9980965167757688,
-    "autoencoder": 0.00013582992903394
+    "ocsvm": 1.0,
+    "iforest": 0.0,
+    "autoencoder": 0.0
   },
   "details": {
     "iforest": {
-      "raw_weight": 0.0007377326850783703,
-      "variance": 1.354504534672703e-06,
+      "raw_weight": 4.313704120110966e-05,
+      "variance": 2.3180933024518057e-05,
       "spread_p95_p05": 1e-09,
-      "normalized_weight": 0.0017676532951972747
+      "normalized_weight": 1.2129279252670026e-09
     },
     "ocsvm": {
-      "raw_weight": 0.4165570393747267,
-      "variance": 35.93262203515884,
-      "spread_p95_p05": 14.96798665235339,
-      "normalized_weight": 0.9980965167757688
+      "raw_weight": 412.12776407252926,
+      "variance": 5.8726226073864923e-05,
+      "spread_p95_p05": 0.024203120372003895,
+      "normalized_weight": 0.011588214209938967
     },
     "autoencoder": {
-      "raw_weight": 5.6688819313421845e-05,
-      "variance": 27.368879318237305,
-      "spread_p95_p05": 0.001551509485580027,
-      "normalized_weight": 0.00013582992903394
+      "raw_weight": 35152.26171875,
+      "variance": 2.0625806618213005e-10,
+      "spread_p95_p05": 4.2402694816701114e-05,
+      "normalized_weight": 0.988411784577133
     }
   }
 }

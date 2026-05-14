@@ -15,6 +15,13 @@ This repository provides code, analysis, and artifacts for an academic proof-of-
 
 **Ablation note:** Using MH-DDPM for feature augmentation improved ablation AUC to ~0.984 (see [output/ablation/ablation_results.csv](output/ablation/ablation_results.csv)). MH-DDPM outputs are in [output/augmented/mh_ddpm/README.txt](output/augmented/mh_ddpm/README.txt). Crucially, MH-DDPM is _not_ used in the deployed scoring path — it's ablation-only (see [docs/mh_ddpm_provenance.md](docs/mh_ddpm_provenance.md)).
 
+## Resolving Covariate Shift via Adversarial Training
+
+The ensemble can be hardened against factory-side covariate shift by retraining on a poisoned version of the pristine AMBR branch:
+- [run_adversarial_training.py](run_adversarial_training.py) loads the 15,871-sample AMBR baseline from [data/FCIC_AMBR_05/Data/00001/S](data/FCIC_AMBR_05/Data/00001/S), expands it into the 104-feature ensemble space, and applies the same broadband noise and hardware degradation used by the crucible.
+- The retrainer then refits the Isolation Forest, One-Class SVM, and autoencoder, recalibrates the ensemble threshold to the 99th percentile of noisy training scores, and overwrites [models/ensemble_audit](models/ensemble_audit).
+- After training, the repository’s existing [run_adversarial_crucible.py](run_adversarial_crucible.py) script can be used unchanged to verify the hardened weights under the same hostile conditions.
+
 **What is included (local files):**
 - **Code:** `src/` (all pipeline code)
 - **Config:** `config/pipeline_config.yaml`

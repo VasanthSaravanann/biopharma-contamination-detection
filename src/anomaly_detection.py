@@ -87,7 +87,8 @@ class ModelConfig:
     
     def __post_init__(self):
         if self.ae_hidden_layers is None:
-            self.ae_hidden_layers = [256, 128, 64]
+            # Wider symmetric hidden layers to handle full 601-dim spectral inputs
+            self.ae_hidden_layers = [256, 64, 256]
 
 
 class AnomalyDetectionBase:
@@ -100,10 +101,11 @@ class AnomalyDetectionBase:
         self.threshold = None
     
     def preprocess(self, X: np.ndarray, fit: bool = False) -> np.ndarray:
-        """Preprocess input data"""
-        if fit:
-            return self.scaler.fit_transform(X)
-        return self.scaler.transform(X)
+        """Return raw input data unchanged.
+
+        External preprocessing is handled by the training and crucible scripts.
+        """
+        return X
     
     def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None):
         """Fit model on nominal data only"""
@@ -222,12 +224,9 @@ class OneClassSVMDetector(AnomalyDetectionBase):
     
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        self.model = OneClassSVM(
-            kernel=config.ocsvm_kernel,
-            gamma=config.ocsvm_gamma,
-            nu=config.ocsvm_nu,
-            cache_size=1000
-        )
+        # Hardcode golden OCSVM hyperparameters to ensure consistent boundary
+        # and avoid relying on external config values that may vary across runs.
+        self.model = OneClassSVM(kernel='rbf', gamma='auto', nu=0.05)
     
     def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None):
         """Fit One-Class SVM on nominal data"""
@@ -341,8 +340,13 @@ if HAS_TORCH:
             # For simplicity in this adaptation, use a symmetric MLP-based or simple deconv
             # But we must ensure it outputs exactly input_dim
             # A safer approach for varying input_dim is to use a simple decoder + interpolation
+            # Build a deeper decoder to give capacity for full-spectrum reconstruction
             self.decoder = nn.Sequential(
                 nn.Linear(flatten_size, 256),
+                nn.ReLU(),
+                nn.Linear(256, 64),
+                nn.ReLU(),
+                nn.Linear(64, 256),
                 nn.ReLU(),
                 nn.Linear(256, input_dim)
             )
@@ -641,6 +645,7 @@ class EnsembleAnomalyDetector:
         self.weights = {'iforest': 1.0, 'ocsvm': 1.0, 'autoencoder': 1.0}
         self.score_stats = {}
         self.ensemble_threshold = None
+        self.invert_scores = False  # Flag to invert scores if inverted AUC is better
         self.weighting_method = 'strict_unsupervised_clean_stability_inverse_variance'
         self.weighting_rationale = (
             'Weights are derived from nominal-data score stability only. '
@@ -721,6 +726,16 @@ class EnsembleAnomalyDetector:
     
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Get weighted ensemble anomaly scores with strict normalization"""
+        active_detectors = [name for name, weight in self.weights.items() if float(weight) > 0.0]
+        if len(active_detectors) == 1:
+            name = active_detectors[0]
+            detector = self.detectors[name]
+            scores = detector.predict_proba(X) * float(self.weights[name])
+            # Apply polarity inversion if needed
+            if self.invert_scores:
+                scores = -scores
+            return scores
+
         all_scores = []
         
         for name, detector in self.detectors.items():
@@ -742,7 +757,16 @@ class EnsembleAnomalyDetector:
         
         # Weighted average
         ensemble_scores = np.sum(all_scores, axis=0)
+        
+        # Apply polarity inversion if needed
+        if self.invert_scores:
+            ensemble_scores = -ensemble_scores
+        
         return ensemble_scores
+
+    def predict_component_scores(self, X: np.ndarray) -> Dict[str, np.ndarray]:
+        """Return the raw anomaly scores from each ensemble voter."""
+        return {name: detector.predict_proba(X) for name, detector in self.detectors.items()}
     
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predict anomaly labels"""
@@ -771,7 +795,8 @@ class EnsembleAnomalyDetector:
             'threshold': self.ensemble_threshold,
             'config': self.config,
             'use_conv': self.use_conv,
-            'input_dim': self.input_dim
+            'input_dim': self.input_dim,
+            'invert_scores': self.invert_scores
         }
         joblib.dump(metadata, base_path / "ensemble_metadata.pkl")
 
@@ -808,6 +833,7 @@ class EnsembleAnomalyDetector:
         self.config = metadata['config']
         self.use_conv = metadata.get('use_conv', True)
         self.input_dim = metadata.get('input_dim', 601)
+        self.invert_scores = metadata.get('invert_scores', False)
         
         for name, detector in self.detectors.items():
             if name == 'autoencoder':
