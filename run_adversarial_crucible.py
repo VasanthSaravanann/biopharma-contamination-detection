@@ -643,6 +643,10 @@ class AdversarialCrucibleTester:
             clean_corrupted = uniform_filter1d(clean_corrupted, size=smoothing_window, axis=1, mode='nearest')
             contaminated_corrupted = uniform_filter1d(contaminated_corrupted, size=smoothing_window, axis=1, mode='nearest')
 
+            # Slice to the 400nm-500nm window (601-channel spectra -> indices 200:301)
+            clean_corrupted = clean_corrupted[:, 200:301]
+            contaminated_corrupted = contaminated_corrupted[:, 200:301]
+
             # Restore L2 normalization (row-wise) to equalize overall light intensity
             clean_corrupted = normalize(clean_corrupted, norm='l2', axis=1)
             contaminated_corrupted = normalize(contaminated_corrupted, norm='l2', axis=1)
