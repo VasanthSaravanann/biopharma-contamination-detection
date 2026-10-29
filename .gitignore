@@ -3,10 +3,17 @@
 __pycache__/
 *.pyc
 .DS_Store
-data/
+
+# Ignore data by default; tracked exceptions listed below
 data/*
+!data/processed/
+!data/CEC_04_2L-fermentation/
+!data/1-s2_mm2.csv
+!data/1-s2_mm3.csv
+
+# Pipeline outputs (generated, not tracked)
 output/
-output/*
+
 *.tmp
 *.log
 .ipynb_checkpoints/
