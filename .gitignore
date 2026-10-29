@@ -1,0 +1,13 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+.DS_Store
+data/
+data/*
+output/
+output/*
+*.tmp
+*.log
+.ipynb_checkpoints/
+.vscode/

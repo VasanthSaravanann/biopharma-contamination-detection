@@ -1,0 +1,330 @@
+# Biopharmaceutical Contamination Detection Pipeline Configuration
+# ================================================================
+# This configuration file controls all aspects of the pipeline execution.
+# Modify these settings to customize data generation, model training, and validation.
+#
+# LITERATURE-BASED HYBRID VALIDATION APPROACH
+# ===========================================
+# This pipeline uses a computational proof-of-concept validated against published
+# literature values. All spectral parameters are derived from peer-reviewed studies:
+# - Wacogne et al., "UV-Vis Spectroscopy for Bioprocess Contamination Detection", Sensors 2023
+# - Wacogne et al., "Rapid Microbial Detection in Biopharmaceuticals", Biosensors 2025
+# - European Pharmacopoeia 10.0, Chapter 2.6.1: Sterility
+# - USP <71> Sterility Tests
+#
+# Biopharmaceutical Contamination Detection Pipeline Configuration
+# Configurable manifest-driven real-data pipeline with auditable ensemble detection
+# ============================================================================
+# DATA SOURCES
+# ============================================================================
+data:
+  # AMBR bioreactor sensor data root
+  ambr_root: "data/FCIC_AMBR_05/Data"
+  
+  # CEC_04_2L fermentation data (Sartorius scales A5, A6)
+  cec_root: "data/CEC_04_2L-fermentation"
+  
+  # Bacterial contamination spectral signatures
+  bacteria_root: "data/Bacteria Contamination Work"
+  
+  # Processed output directory
+  processed_output: "data/processed"
+  
+  # Enable data sources for training
+  sources:
+    ambr:
+      enabled: true
+      description: "AMBR FCIC-05 bioreactor sensor data"
+    cec:
+      enabled: true
+      description: "CEC_04_2L fermentation bioreactor data (scale-up reference)"
+    bacteria:
+      enabled: true
+      description: "Bacterial contamination spectral signatures"
+
+# ============================================================================
+# EXPERIMENT MANIFEST
+# ============================================================================
+experiments:
+  # Real-data experiments to run
+  # Format: [organism]_[inoculum_level]_[experiment_id]
+  enabled:
+    - "EColi_10CFU"
+    - "EColi_100CFU"
+    - "PAeruginosa_10CFU"
+    - "PAeruginosa_100CFU"
+    - "SAureus_10CFU"
+    - "SAureus_100CFU"
+    - "BSubtilis_10CFU"
+    - "BSubtilis_100CFU"
+    - "CAlbicans_10CFU"
+    - "CAlbicans_100CFU"
+  
+  # Organism-to-file-pattern mapping for ingestion
+  organisms:
+    EColi:
+      file_pattern: "*EColi*"
+      alias: ["E.coli", "ecoli"]
+    PAeruginosa:
+      file_pattern: "*PAeruginosa*"
+      alias: ["P.aeruginosa", "pseudomonas"]
+    SAureus:
+      file_pattern: "*SAureus*"
+      alias: ["S.aureus", "staph"]
+    BSubtilis:
+      file_pattern: "*BSubtilis*"
+      alias: ["B.subtilis", "bacillus"]
+    CAlbicans:
+      file_pattern: "*CAlbicans*"
+      alias: ["C.albicans", "candida"]
+  
+  # Inoculum levels
+  inoculum_levels: [10, 100]  # CFU/mL
+
+# ============================================================================
+# DATA SPLIT STRATEGY
+# ============================================================================
+split:
+  # Stratification method: "groupshuffle", "timeseries", "organism"
+  strategy: "groupshuffle"
+  
+  # GroupShuffleSplit parameters
+  n_splits: 1
+  test_size: 0.2
+  train_size: null
+  random_state: 42
+  
+  # Temporal window size for grouping (minutes)
+  group_window_minutes: 60
+  
+  # Minimum samples per split (sanity check)
+  min_samples_train: 50
+  min_samples_test: 10
+
+# ============================================================================
+# FEATURE EXTRACTION
+# ============================================================================
+features:
+  # Feature extraction mode: "spectral", "process", "fused"
+  mode: "fused"
+  
+  # Spectral feature types to extract
+  spectral:
+    - "absorbance_mean"
+    - "absorbance_std"
+    - "absorbance_max"
+    - "absorbance_min"
+    - "absorbance_slope"
+    - "absorbance_curvature"
+  
+  # Process variable feature types
+  process:
+    - "ph"
+    - "dissolved_oxygen"
+    - "temperature"
+    - "conductivity"
+    - "agitation"
+  
+  # Feature scaling: "standard", "robust", "minmax"
+  scaling: "robust"
+  
+  # Handle missing values: "drop", "mean", "ffill"
+  missing_value_strategy: "ffill"
+
+  # Optional expanded feature columns to include when present in the fused dataframe.
+  # These are hooks for additional process-state variables such as dissolved CO2,
+  # off-gas composition, or metabolite profiles when they are available from the source data.
+  expanded_feature_columns:
+    - "dissolved_co2"
+    - "offgas_co2"
+    - "offgas_o2"
+    - "glucose"
+    - "lactate"
+    - "acetate"
+
+# ============================================================================
+# ANOMALY DETECTION ENSEMBLE
+# ============================================================================
+ensemble:
+  # Base detectors in ensemble
+  detectors:
+    isolation_forest:
+      enabled: true
+      params:
+        n_estimators: 200
+        max_samples: "auto"
+        max_features: 1.0
+        contamination: 0.01
+        random_state: 42
+    
+    one_class_svm:
+      enabled: true
+      params:
+        kernel: "rbf"
+        gamma: "auto"
+        nu: 0.05
+        random_state: 42
+    
+    deep_autoencoder:
+      enabled: true
+      params:
+        hidden_layers: [256, 128, 64]
+        latent_dim: 32
+        activation: "relu"
+        dropout: 0.2
+        learning_rate: 0.001
+        batch_size: 64
+        epochs: 100
+        early_stopping_patience: 10
+        weight_decay: 0.00001
+    
+    pca_baseline:
+      enabled: true
+      description: "PCA for explicit baseline comparison (not for deployment)"
+      params:
+        n_components: 10
+        whiten: true
+        random_state: 42
+  
+  # Ensemble weighting strategy: "inverse_variance", "equal", "performance"
+  weighting_strategy: "inverse_variance"
+  
+  # Inverse-variance weighting: only calibrate on clean (y=0) data
+  calibration_data_only_clean: true
+  
+  # Ensemble decision threshold (percentile of clean training scores)
+  threshold_percentile: 95.0
+  
+  # Spread guard: min standard deviation of ensemble weights
+  weight_spread_min_std: 0.05
+
+# ============================================================================
+# VALIDATION & GATES
+# ============================================================================
+validation:
+  # Detection limit target (CFU/mL)
+  target_detection_limit: 10.0
+  
+  # Detection time window (minutes)
+  detection_window_minutes: 30
+  
+  # ROC-AUC performance targets
+  targets:
+    ensemble_auc_min: 0.94
+    baseline_auc_min: 0.80
+    sensitivity_min: 0.90
+    specificity_min: 0.95
+    inference_latency_ms_max: 100
+  
+  # Anti-shortcut validation: shuffled AUC ratio
+  shuffled_auc_ratio_threshold: 0.80
+  
+  # Compute 10 CFU/mL detection-limit block
+  compute_10cfu_block: true
+  
+  # Compute confusion breakdown per contamination type
+  compute_contamination_confusion: true
+  
+  # Bootstrap confidence intervals
+  n_bootstrap_iterations: 1000
+  bootstrap_confidence: 0.95
+  
+  # Statistical tests: MMD, JSD
+  statistical_tests:
+    mmd_enabled: true
+    jsd_enabled: true
+    mmd_kernel: "rbf"
+
+# ============================================================================
+# VISUALIZATION
+# ============================================================================
+visualization:
+  # Output directory for figures
+  output_dir: "figures"
+  
+  # Figure types to generate
+  figures:
+    - "ensemble_score_distributions"
+    - "detection_limit_curves"
+    - "roc_pr_curves"
+    - "uncertainty_bands"
+    - "dimensionality_reduction"  # PCA/UMAP/t-SNE
+    - "confusion_matrices"
+    - "time_series_detection"
+    - "weighting_metadata"
+  
+  # DPI for saved figures
+  dpi: 300
+  
+  # Format for saved figures: "png", "pdf", "svg"
+  format: "png"
+  
+  # Dimensionality reduction methods
+  dimensionality_reduction:
+    - "pca"
+    - "umap"
+    - "tsne"
+
+# ============================================================================
+# ABLATION STUDIES (MH-DDPM SYNTHETIC ONLY)
+# ============================================================================
+ablation:
+  # MH-DDPM enabled only for synthetic augmentation comparison
+  mh_ddpm_enabled: false
+  description: "MH-DDPM is ablation-only (synthetic augmentation). Do not include in deployed detection path."
+  
+  # Synthetic augmentation parameters (if enabled)
+  synthetic_augmentation:
+    n_synthetic_samples_per_class: 500
+    augmentation_strength: 0.1
+    seed: 42
+  
+  # Comparison baselines for ablation
+  ablation_baselines:
+    - "base_ensemble"
+    - "isolation_forest_only"
+    - "ocsvm_only"
+    - "autoencoder_only"
+    - "pca_only"
+
+# ============================================================================
+# OUTPUT PATHS
+# ============================================================================
+output:
+  # Main output directory
+  root_dir: "output"
+  
+  # Subdirectories
+  results_dir: "output/results"
+  models_dir: "models"
+  figures_dir: "figures"
+  logs_dir: "logs"
+  
+  # Artifact names
+  artifacts:
+    split_manifest: "split_manifest.json"
+    run_bundle: "run_bundle.json"
+    metrics: "metrics.json"
+    weighting_metadata: "weighting_metadata.json"
+    model_ensemble: "ensemble_audit"
+    model_baseline: "baseline_ocsvm"
+
+# ============================================================================
+# LOGGING & DEBUGGING
+# ============================================================================
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  save_logs: true
+  
+  # Audit trail: save all intermediate steps
+  audit_trail: true
+
+# ============================================================================
+# RANDOM SEEDS & REPRODUCIBILITY
+# ============================================================================
+reproducibility:
+  random_state: 42
+  numpy_seed: 42
+  torch_seed: 42
+  cuda_deterministic: true
